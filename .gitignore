@@ -1,0 +1,28 @@
+# --- Dependencias y entorno ---
+node_modules/
+vendor/
+.env
+.env.local
+.env.*.local
+
+# --- IDE / editor ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# --- Control de versiones ---
+.git/
+.gitkeep
+
+# --- Documentación y archivos varios del proyecto (no se suben al servidor) ---
+*.md
+!README.md
+
+# --- SFTP: archivo con credenciales (NUNCA versionar) ---
+.vscode/sftp.json
+
+# --- Sistema operativo ---
+.DS_Store
+Thumbs.db
