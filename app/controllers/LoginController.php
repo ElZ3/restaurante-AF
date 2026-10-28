@@ -15,6 +15,7 @@ class LoginController
             redirigir('/dashboard');
         }
 
+        $modo_demo = defined('MODO_DEMO') && MODO_DEMO;
         require_once __DIR__ . '/../../public/views/login.php';
     }
 
@@ -23,6 +24,13 @@ class LoginController
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             redirigir('/login');
+        }
+
+        if (isset($_POST['demo'])) {
+            if (Auth::iniciarDemo($_POST['demo_rol'] ?? '')) {
+                redirigir('/dashboard');
+            }
+            redirigir('/login?demo=desactivado');
         }
 
         $usuario = trim((string) ($_POST['usuario'] ?? $_POST['email'] ?? ''));

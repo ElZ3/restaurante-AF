@@ -64,7 +64,7 @@ h1, h2, h3, h4, .titulo-serif { font-family: 'Playfair Display', Georgia, serif;
 .estado { display: inline-flex; align-items: center; gap: .35rem; padding: .2rem .65rem; border-radius: 999px;
   font-size: .75rem; font-weight: 600; background: color-mix(in srgb, var(--c) 14%, white); color: var(--c); }
 .estado::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
-.estado-disponible, .estado-activo, .estado-confirmada { --c: var(--st-disponible); }
+.estado-disponible, .estado-libre, .estado-activo, .estado-confirmada { --c: var(--st-disponible); }
 .estado-reservada, .estado-pendiente { --c: var(--st-reservada); }
 .estado-ocupada, .estado-cancelada, .estado-inactivo { --c: var(--st-ocupada); }
 .estado-preparacion { --c: var(--st-preparacion); }
@@ -106,14 +106,27 @@ h1, h2, h3, h4, .titulo-serif { font-family: 'Playfair Display', Georgia, serif;
 
 /* ---------- Login ---------- */
 .login-wrap { min-height: 100vh; display: grid; grid-template-columns: 1.1fr 1fr; }
-.login-imagen { background: linear-gradient(160deg, rgba(24,61,52,.92), rgba(12,35,29,.97)),
-  radial-gradient(circle at 30% 20%, #2c6a5a, transparent 60%); color: #fff;
+.login-imagen { background: linear-gradient(160deg, rgba(24,61,52,.62), rgba(12,35,29,.88)),
+  url('/img/login.jpg') center / cover no-repeat,
+  linear-gradient(160deg, #183D34, #0c231d); color: #fff;
   display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 2rem; }
 .login-imagen .marca { font-family: 'Playfair Display', Georgia, serif; font-size: 3.4rem; font-weight: 700; }
 .login-imagen .sub { letter-spacing: .45em; font-size: .8rem; color: var(--dorado); }
 .login-imagen .lema { margin-top: 2rem; font-style: italic; color: rgba(255,255,255,.8); max-width: 280px; }
 .login-form { display: flex; align-items: center; justify-content: center; padding: 2rem; background: var(--marfil); }
-.login-caja { width: 100%; max-width: 380px; }
+.login-caja { width: 100%; max-width: 420px; padding: 2rem; background: var(--blanco); border: 1px solid var(--borde);
+  border-radius: var(--radio); box-shadow: var(--sombra); }
+.login-logo { display: block; max-width: 220px; max-height: 110px; width: auto; height: auto; margin: 0 auto 1.5rem; }
+.login-imagen .marca, .login-imagen .sub, .login-imagen .lema { text-shadow: 0 2px 12px rgba(0,0,0,.45); }
+.nav-icon { width: 1.15rem; height: 1.15rem; flex: 0 0 1.15rem; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+.topbar .icon-button { color: var(--gris); border: 0; background: transparent; padding: .35rem; line-height: 1; }
+.topbar .icon-button:hover { color: var(--verde); }
+.topbar .icon-button svg { width: 1.25rem; height: 1.25rem; stroke: currentColor; fill: none; stroke-width: 1.8; }
+.pagina > * { animation: aparecer .24s ease both; }
+@keyframes aparecer { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
 @media (max-width: 767.98px) {
   .login-wrap { grid-template-columns: 1fr; }
   .login-imagen { padding: 2rem 1rem; }
@@ -129,7 +142,9 @@ h1, h2, h3, h4, .titulo-serif { font-family: 'Playfair Display', Georgia, serif;
 /* ---------- Paso 3: reservas y mesas ---------- */
 .estado-llego { --c: var(--st-lista); }
 .estado-atendida { --c: var(--st-entregada); }
+.estado-completada { --c: var(--st-entregada); }
 .estado-fuera_servicio { --c: #6B7280; }
+.estado-mantenimiento { --c: #6B7280; }
 
 .barra-filtros { display: flex; flex-wrap: wrap; gap: .75rem; align-items: end; }
 .barra-filtros > div { flex: 1 1 160px; }
@@ -140,9 +155,11 @@ h1, h2, h3, h4, .titulo-serif { font-family: 'Playfair Display', Georgia, serif;
 .mesa-card .mesa-num { font-family: 'Playfair Display', Georgia, serif; font-size: 1.4rem; font-weight: 700; color: var(--verde); line-height: 1.1; }
 .mesa-card .mesa-info { font-size: .8rem; color: var(--gris); min-height: 2.4em; margin-top: .6rem; }
 .mesa-disponible { --c: var(--st-disponible); }
+.mesa-libre { --c: var(--st-disponible); }
 .mesa-reservada { --c: var(--st-reservada); }
 .mesa-ocupada { --c: var(--st-ocupada); }
 .mesa-fuera_servicio { --c: #6B7280; }
+.mesa-mantenimiento { --c: #6B7280; }
 
 .chip-area { border: 1px solid var(--borde); background: var(--blanco); color: var(--texto); border-radius: 999px;
   padding: .35rem .9rem; font-size: .85rem; }

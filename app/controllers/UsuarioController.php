@@ -14,17 +14,7 @@ class UsuarioController
     // Muestra el listado de usuarios.
     public function index()
     {
-        /*
-        // Validación de sesión y rol (comentada temporalmente):
-        if (!isset($_SESSION['usuario_id'])) {
-            header('Location: /login');
-            exit;
-        }
-        if ($_SESSION['rol'] !== 'administrador') {
-            header('Location: /dashboard?error=acceso_denegado');
-            exit;
-        }
-        */
+        Auth::exigirRol(Menu::roles('usuarios'));
 
         $modeloUsuario = new Usuario();
         $usuarios = $modeloUsuario->obtenerTodos();

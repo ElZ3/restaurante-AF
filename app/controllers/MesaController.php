@@ -13,13 +13,7 @@ class MesaController
     // Muestra el listado de mesas.
     public function index()
     {
-        /*
-        // Validación de sesión (comentada temporalmente):
-        if (!isset($_SESSION['usuario_id'])) {
-            header('Location: /login');
-            exit;
-        }
-        */
+        Auth::exigirRol(Menu::roles('mesas'));
 
         $modeloMesa = new Mesa();
         $mesas = $modeloMesa->obtenerTodos();

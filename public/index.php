@@ -53,6 +53,10 @@ spl_autoload_register(function ($class) {
 require_once __DIR__ . '/../app/core/helpers.php';
 require_once __DIR__ . '/../app/core/Auth.php';
 
+if (!defined('MODO_DEMO')) {
+    define('MODO_DEMO', getenv('OLIVO_MODO_DEMO') === '1');
+}
+
 if (!class_exists('App\\Core\\Auth', false) && class_exists('Auth', false)) {
     class_alias('Auth', 'App\\Core\\Auth');
 }
@@ -75,11 +79,13 @@ $rutasEstaticas = [
     'dashboard'=> ['DashboardController', 'index'],
     'usuarios' => ['UsuarioController',  'index'],
     'mesas'    => ['MesaController',     'index'],
-    'menu'     => null, // se renderiza vista directamente
-    'pedidos'  => null, // se renderiza vista directamente
-    'cocina'   => null, // se renderiza vista directamente
-    'reportes' => null, // se renderiza vista directamente
+    'menu'     => ['ModuloController', 'menu'],
+    'pedidos'  => ['ModuloController', 'pedidos'],
+    'cocina'   => ['ModuloController', 'cocina'],
+    'reservas' => ['ModuloController', 'reservas'],
+    'reportes' => ['ModuloController', 'reportes'],
     'cuentas'  => null, // se renderiza vista directamente
+    'configuracion' => ['ModuloController', 'configuracion'],
 ];
 
 // Rutas con parámetros dinámicos: patrón -> [controlador, acción]

@@ -1,60 +1,78 @@
 <?php
-// Vista: login.php
-// Página de inicio de sesión - Olivo Real Restaurant.
-// Renderizada directamente durante el maquetado frontend.
+$error = !empty($_GET['error']) ? 'Usuario o contraseña incorrectos.' : '';
+$modo_demo = !empty($modo_demo);
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iniciar sesión · Olivo Real Restaurant</title>
-    <link rel="stylesheet" href="/css/estilos.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', Arial, sans-serif; background: var(--marfil); color: var(--texto); display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        :root {
-          --verde: #183D34;
-          --verde-2: #225247;
-          --dorado: #D8BD82;
-          --dorado-osc: #B99A56;
-          --marfil: #F7F3EA;
-          --blanco: #FFFFFF;
-          --texto: #2E2E2E;
-          --gris: #6B7280;
-          --borde: #E5E1D6;
-          --radio: 12px;
-          --sombra: 0 1px 3px rgba(24,61,52,.08), 0 4px 14px rgba(24,61,52,.05);
-        }
-        .login-card { background: var(--blanco); padding: 2.5rem; border-radius: var(--radio); box-shadow: var(--sombra); width: 100%; max-width: 400px; border: 1px solid var(--borde); }
-        .login-marca { font-family: 'Playfair Display', Georgia, serif; font-size: 2rem; font-weight: 700; color: var(--verde); text-align: center; margin-bottom: 0.25rem; }
-        .login-sub { text-align: center; color: var(--dorado-osc); font-size: 0.85rem; letter-spacing: 0.3em; margin-bottom: 2rem; text-transform: uppercase; }
-        h2 { text-align: center; margin-bottom: 1.5rem; color: var(--verde); font-family: 'Playfair Display', Georgia, serif; }
-        label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--texto); font-size: 0.85rem; }
-        input[type="text"], input[type="password"] { width: 100%; padding: 0.75rem 1rem; margin-bottom: 1rem; border: 1px solid var(--borde); border-radius: var(--radio); font-family: 'Inter', sans-serif; }
-        button { width: 100%; padding: 0.75rem; background: var(--verde); color: #fff; border: none; border-radius: var(--radio); font-size: 1rem; cursor: pointer; font-weight: 600; }
-        button:hover { background: var(--verde-2); }
-        .error { color: #c62828; margin-bottom: 1rem; text-align: center; font-size: 0.85rem; background: #ffebee; padding: 0.75rem; border-radius: var(--radio); border: 1px solid #ef9a9a; }
-        .login-pie { text-align: center; margin-top: 1.5rem; font-size: 0.8rem; color: var(--gris); }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Iniciar sesión · Olivo Real</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link href="/css/estilos.css" rel="stylesheet">
 </head>
 <body>
-    <div class="login-card">
-        <div class="login-marca">Olivo Real</div>
-        <div class="login-sub">RESTAURANT</div>
-        <h2>Iniciar sesión</h2>
-        <?php if (isset($error) || isset($_GET['error'])): ?>
-            <div class="error"><?= htmlspecialchars($error ?? 'Usuario o contraseña incorrectos.') ?></div>
+<div class="login-wrap">
+  <section class="login-imagen">
+    <div class="marca">Olivo Real</div>
+    <div class="sub">RESTAURANTE</div>
+    <p class="lema">El arte de compartir una buena mesa.</p>
+  </section>
+  <section class="login-form">
+    <div class="login-caja">
+      <img src="/img/logo.png" alt="Olivo Real" class="login-logo">
+      <h1 class="h2 mb-1">Iniciar sesión</h1>
+      <p class="text-secondary mb-4">Accede a tu cuenta para continuar</p>
+      <?php if ($error !== ''): ?>
+        <div class="alert alert-danger py-2 small" role="alert"><?= e($error) ?></div>
+      <?php endif; ?>
+      <?php if (!empty($_GET['demo'])): ?>
+        <div class="alert alert-warning py-2 small" role="alert">El modo demo está desactivado.</div>
+      <?php endif; ?>
+      <form method="post" action="/autenticar">
+        <?= Csrf::campo() ?>
+        <div class="mb-3">
+          <label class="form-label" for="usuario">Correo electrónico</label>
+          <div class="input-group">
+            <span class="input-group-text bg-white"><i class="bi bi-envelope" aria-hidden="true"></i></span>
+            <input type="text" class="form-control" id="usuario" name="usuario" autocomplete="username" placeholder="correo@olivoreal.com" required autofocus>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="contrasena">Contraseña</label>
+          <div class="input-group">
+            <span class="input-group-text bg-white"><i class="bi bi-lock" aria-hidden="true"></i></span>
+            <input type="password" class="form-control" id="contrasena" name="contrasena" autocomplete="current-password" placeholder="••••••••" required>
+            <button class="btn btn-outline-secondary" type="button" id="verClave" aria-label="Mostrar contraseña"><i class="bi bi-eye" aria-hidden="true"></i></button>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-olivo w-100 py-2 mt-2">Ingresar <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i></button>
+        <?php if ($modo_demo): ?>
+          <div class="border-top mt-3 pt-3">
+            <label class="form-label small text-secondary" for="demoRol">Modo demo: entrar como</label>
+            <div class="input-group">
+              <select class="form-select" id="demoRol" name="demo_rol">
+                <?php foreach (Auth::ROLES as $clave => $texto): ?>
+                  <option value="<?= e($clave) ?>"><?= e($texto) ?></option>
+                <?php endforeach; ?>
+              </select>
+              <button type="submit" name="demo" value="1" formnovalidate class="btn btn-outline-olivo">Entrar</button>
+            </div>
+          </div>
         <?php endif; ?>
-        <form action="/autenticar" method="POST">
-            <label for="usuario">Correo / Usuario</label>
-            <input type="text" id="usuario" name="usuario" required>
-            <label for="contrasena">Contraseña</label>
-            <input type="password" id="contrasena" name="contrasena" required>
-            <button type="submit">Ingresar</button>
-        </form>
-        <div class="login-pie">Olivo Real Restaurant &mdash; El arte de compartir una buena mesa.</div>
+      </form>
     </div>
+  </section>
+</div>
+<script>
+  document.getElementById('verClave').addEventListener('click', function () {
+    const campo = document.getElementById('contrasena');
+    const mostrar = campo.type === 'password';
+    campo.type = mostrar ? 'text' : 'password';
+    this.setAttribute('aria-label', mostrar ? 'Ocultar contraseña' : 'Mostrar contraseña');
+  });
+</script>
 </body>
 </html>

@@ -1,93 +1,158 @@
 <?php
-// Vista: reportes.php
-// Reportes y estadísticas - Olivo Real Restaurant.
+$titulo = 'Reportes';
+$pagina = 'reportes';
+
+// Datos reales recibidos del controlador/PDO
+$reporte = is_array($reporte ?? null) ? $reporte : [];
+$ventas_semana = is_array($ventas_semana ?? null) ? $ventas_semana : [];
+
+$tipos = [
+    'ventas'    => 'Ventas por período',
+    'productos' => 'Productos más vendidos',
+    'pedidos'   => 'Pedidos por estado',
+    'reservas'  => 'Reservas por estado',
+    'pagos'     => 'Por método de pago'
+];
+
+$ventas_total    = (float) ($reporte['ventas'] ?? 0);
+$cuentas_total   = (int) ($reporte['pedidos'] ?? $reporte['cuentas'] ?? 0);
+$ticket_promedio = $cuentas_total > 0 ? ($ventas_total / $cuentas_total) : 0;
+
+$desde_val = $_GET['desde'] ?? date('Y-m-d', strtotime('-6 days'));
+$hasta_val = $_GET['hasta'] ?? date('Y-m-d');
+$dias_periodo = max(1, (int) round((strtotime($hasta_val) - strtotime($desde_val)) / 86400) + 1);
+
+ob_start();
 ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reportes · Olivo Real Restaurant</title>
-    <link rel="stylesheet" href="/css/estilos.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', Arial, sans-serif; background: var(--marfil); color: var(--texto); }
-        :root { --verde: #183D34; --verde-2: #225247; --dorado: #D8BD82; --dorado-osc: #B99A56; --marfil: #F7F3EA; --blanco: #FFFFFF; --texto: #2E2E2E; --gris: #6B7280; --borde: #E5E1D6; --radio: 12px; --sombra: 0 1px 3px rgba(24,61,52,.08), 0 4px 14px rgba(24,61,52,.05); --ancho-menu: 250px; }
-        .sidebar { position: fixed; inset: 0 auto 0 0; width: var(--ancho-menu); background: var(--verde); color: #fff; display: flex; flex-direction: column; z-index: 1040; transition: transform .25s ease; }
-        .sidebar-logo { padding: 1.4rem 1.25rem 1rem; text-align: center; border-bottom: 1px solid rgba(255,255,255,.1); }
-        .sidebar-logo .marca { font-family: 'Playfair Display', Georgia, serif; font-size: 1.6rem; font-weight: 700; color: #fff; line-height: 1; }
-        .sidebar-logo .sub { font-size: .65rem; letter-spacing: .35em; color: var(--dorado); margin-top: .3rem; text-transform: uppercase; }
-        .sidebar nav { padding: .75rem; overflow-y: auto; flex: 1; }
-        .sidebar .enlace { display: flex; align-items: center; gap: .75rem; padding: .65rem .85rem; border-radius: 8px; color: rgba(255,255,255,.78); text-decoration: none; font-size: .9rem; margin-bottom: 2px; }
-        .sidebar .enlace:hover { background: rgba(255,255,255,.08); color: #fff; }
-        .sidebar .enlace.activo { background: var(--dorado); color: var(--verde); font-weight: 600; }
-        .sidebar-pie { padding: .75rem; border-top: 1px solid rgba(255,255,255,.1); }
-        .contenido { margin-left: var(--ancho-menu); min-height: 100vh; }
-        .topbar { background: var(--blanco); border-bottom: 1px solid var(--borde); padding: .75rem 1.5rem; display: flex; align-items: center; gap: 1rem; position: sticky; top: 0; z-index: 1030; }
-        .topbar h1 { font-size: 1.2rem; margin: 0; font-family: 'Playfair Display', Georgia, serif; color: var(--verde); }
-        .pagina { padding: 1.5rem; }
-        .btn { display: inline-block; padding: 0.5rem 1rem; background: var(--verde); color: #fff; text-decoration: none; border-radius: var(--radio); font-size: 0.9rem; font-weight: 600; }
-        .btn:hover { background: var(--verde-2); }
-        .tarjeta { background: var(--blanco); border: 1px solid var(--borde); border-radius: var(--radio); padding: 1.5rem; box-shadow: var(--sombra); margin-bottom: 1.5rem; }
-        .tarjeta-titulo { font-family: 'Playfair Display', Georgia, serif; font-size: 1rem; font-weight: 700; color: var(--verde); margin-bottom: 1rem; }
-        .stat { display: flex; gap: 1rem; align-items: flex-start; }
-        .stat-icono { width: 44px; height: 44px; border-radius: 10px; background: var(--marfil); color: var(--verde); display: grid; place-items: center; font-size: 1.3rem; flex-shrink: 0; }
-        .stat-valor { font-size: 1.7rem; font-weight: 700; color: var(--verde); line-height: 1.2; }
-        .stat-etiqueta { font-size: 0.8rem; color: var(--gris); }
-        .filtros { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
-    </style>
-</head>
-<body>
-    <div class="sidebar" id="menuLateral">
-        <div class="sidebar-logo">
-            <div class="marca">Olivo Real</div>
-            <div class="sub">RESTAURANT</div>
+<div class="tarjeta mb-3">
+  <form method="GET" action="/reportes" class="barra-filtros d-flex flex-wrap align-items-end gap-3">
+    <div>
+      <label class="form-label mb-1 fw-semibold" for="tipo">Tipo de reporte</label>
+      <select id="tipo" name="tipo" class="form-select">
+        <?php foreach ($tipos as $k => $t): ?>
+          <option value="<?= $k ?>" <?= (($_GET['tipo'] ?? '') === $k) ? 'selected' : '' ?>><?= $t ?></option>
+        <?php endforeach; ?>
+      </select>
+    </div>
+    <div>
+      <label class="form-label mb-1 fw-semibold" for="desde">Desde</label>
+      <input type="date" id="desde" name="desde" class="form-control" value="<?= htmlspecialchars($desde_val) ?>">
+    </div>
+    <div>
+      <label class="form-label mb-1 fw-semibold" for="hasta">Hasta</label>
+      <input type="date" id="hasta" name="hasta" class="form-control" value="<?= htmlspecialchars($hasta_val) ?>">
+    </div>
+    <div class="flex-grow-0">
+      <button type="submit" id="btnGenerar" class="btn btn-olivo d-inline-flex align-items-center gap-1">
+        <i class="bi bi-arrow-repeat"></i> Generar
+      </button>
+    </div>
+    <div class="flex-grow-0 ms-auto">
+      <button type="button" id="btnCsv" class="btn btn-outline-olivo d-inline-flex align-items-center gap-1">
+        <i class="bi bi-download"></i> Exportar CSV
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- Tarjetas KPI -->
+<div class="row g-3 mb-3">
+  <div class="col-6 col-xl-3">
+    <div class="tarjeta">
+      <div class="stat">
+        <div class="stat-icono"><i class="bi bi-cash-stack"></i></div>
+        <div>
+          <div class="stat-etiqueta">Total cobrado</div>
+          <div class="stat-valor" style="font-size:1.4rem">$<?= number_format($ventas_total, 2) ?></div>
         </div>
-        <nav>
-            <a href="/dashboard" class="enlace">Dashboard</a>
-            <a href="/reportes" class="enlace activo">Reportes</a>
-            <a href="/logout" class="enlace" style="color:rgba(255,255,255,.5);">Cerrar sesión</a>
-        </nav>
-        <div class="sidebar-pie"></div>
+      </div>
     </div>
-    <div class="contenido">
-        <header class="topbar">
-            <h1>Reportes y Estadísticas</h1>
-        </header>
-        <main class="pagina">
-            <h1 style="font-family:'Playfair Display',Georgia,serif; color:var(--verde); margin-bottom:1.5rem;">Reportes · Olivo Real Restaurant</h1>
-            <div class="filtros">
-                <select style="padding:0.75rem 1rem; border:1px solid var(--borde); border-radius:var(--radio); font-family:'Inter',sans-serif;">
-                    <option>Ventas del día</option>
-                    <option>Ventas de la semana</option>
-                    <option>Ventas del mes</option>
-                </select>
-                <select style="padding:0.75rem 1rem; border:1px solid var(--borde); border-radius:var(--radio); font-family:'Inter',sans-serif;">
-                    <option>Todos los productos</option>
-                    <option>Más vendidos</option>
-                    <option>Menos vendidos</option>
-                </select>
-                <button class="btn">Generar reporte</button>
-            </div>
-            <div class="tarjeta">
-                <div class="tarjeta-titulo">Resumen del día</div>
-                <div class="stat">
-                    <span class="stat-icono">💰</span>
-                    <div>
-                        <div class="stat-valor">$0,00</div>
-                        <div class="stat-etiqueta">Ingresos totales</div>
-                    </div>
-                </div>
-                <div class="stat">
-                    <span class="stat-icono">🧾</span>
-                    <div>
-                        <div class="stat-valor">0</div>
-                        <div class="stat-etiqueta">Pedidos</div>
-                    </div>
-                </div>
-            </div>
-        </main>
+  </div>
+
+  <div class="col-6 col-xl-3">
+    <div class="tarjeta">
+      <div class="stat">
+        <div class="stat-icono"><i class="bi bi-receipt"></i></div>
+        <div>
+          <div class="stat-etiqueta">Cuentas pagadas</div>
+          <div class="stat-valor" style="font-size:1.4rem"><?= $cuentas_total ?></div>
+        </div>
+      </div>
     </div>
-</body>
-</html>
+  </div>
+
+  <div class="col-6 col-xl-3">
+    <div class="tarjeta">
+      <div class="stat">
+        <div class="stat-icono"><i class="bi bi-calculator"></i></div>
+        <div>
+          <div class="stat-etiqueta">Ticket promedio</div>
+          <div class="stat-valor" style="font-size:1.4rem">$<?= number_format($ticket_promedio, 2) ?></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-xl-3">
+    <div class="tarjeta">
+      <div class="stat">
+        <div class="stat-icono"><i class="bi bi-calendar3"></i></div>
+        <div>
+          <div class="stat-etiqueta">Días del período</div>
+          <div class="stat-valor" style="font-size:1.4rem"><?= $dias_periodo ?></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Contenedor del Gráfico de Ventas -->
+<div class="tarjeta mb-3">
+  <div class="tarjeta-titulo">Ventas por día</div>
+  <?php if (!empty($ventas_semana)): ?>
+    <canvas id="graficoReporte" height="110"></canvas>
+  <?php else: ?>
+    <div class="py-4 text-center text-secondary">
+      <i class="bi bi-bar-chart fs-1 d-block mb-2 text-muted"></i>
+      No hay registros de ventas para el período seleccionado.
+    </div>
+  <?php endif; ?>
+</div>
+
+<?php
+$contenido = ob_get_clean();
+
+$etiquetas = json_encode(array_keys($ventas_semana), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+$valores   = json_encode(array_values($ventas_semana), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+
+if (!empty($ventas_semana)) {
+    $scripts_extra = <<<HTML
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+  new Chart(document.getElementById('graficoReporte'), {
+    type: 'bar',
+    data: {
+      labels: {$etiquetas},
+      datasets: [{
+        label: 'Ventas ($)',
+        data: {$valores},
+        backgroundColor: '#183D34',
+        borderRadius: 6
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, grid: { color: '#EEE9DC' } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+</script>
+HTML;
+} else {
+    $scripts_extra = '';
+}
+
+require_once __DIR__ . '/layout.php';
+render_app_layout($titulo, $pagina, $contenido, $scripts_extra);
