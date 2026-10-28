@@ -5,7 +5,7 @@ vendor/
 .env.local
 .env.*.local
 
-# IDE / Editor / IA (archivos locales y credenciales)
+# IDE
 .vscode/
 .vscode/sftp.json
 .opencode/
@@ -17,3 +17,12 @@ vendor/
 # Sistema operativo
 .DS_Store
 Thumbs.db
+
+# Configuración y workflows de GitHub
+.github/
+
+# Ocultar todos los archivos Markdown (.md) de la raíz y subcarpetas
+*.md
+
+# Excepción: Permitir únicamente AVANCE1.md
+!AVANCE1.md
