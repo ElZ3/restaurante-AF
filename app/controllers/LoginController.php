@@ -1,79 +1,55 @@
 <?php
 // Controlador: LoginController.php
 // Maneja la autenticación de usuarios del sistema.
-// NOTA (regla temporal de colaboración): la validación de sesión y el
-// bloqueo de rutas están programados pero COMENTADOS para que las vistas
-// carguen directamente durante el maquetado frontend, sin requerir conexión
-// a la base de datos local.
+// Utiliza el sistema Auth de Olivo Real Restaurant (app/core/Auth.php).
+
+require_once __DIR__ . '/../models/Usuario.php';
 
 class LoginController
 {
     // Muestra el formulario de inicio de sesión.
     public function index()
     {
-        /*
-        // Validación de sesión (comentada temporalmente):
-        if (isset($_SESSION['usuario_id'])) {
-            header('Location: /dashboard');
-            exit;
+        // Validación de sesión: si ya está autenticado, redirigir al dashboard.
+        if (Auth::usuario() !== null) {
+            redirigir('/dashboard');
         }
-        */
 
-        require_once __DIR__ . '/../views/login.php';
+        require_once __DIR__ . '/../../public/views/login.php';
     }
 
     // Procesa el intento de autenticación.
     public function autenticar()
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header('Location: /login');
-            exit;
+            redirigir('/login');
         }
 
-        $usuario = $_POST['usuario'] ?? '';
-        $contrasena = $_POST['contrasena'] ?? '';
+        $usuario = trim((string) ($_POST['usuario'] ?? $_POST['email'] ?? ''));
+        $contrasena = (string) ($_POST['contrasena'] ?? $_POST['password'] ?? '');
 
-        /*
-        // Lógica de autenticación (comentada temporalmente):
-        $db = require __DIR__ . '/../config/database.php';
-        $pdo = new PDO(
-            "mysql:host={$db['host']};dbname={$db['dbname']};charset={$db['charset']}",
-            $db['username'],
-            $db['password'],
-            $db['options']
-        );
+        $modeloUsuario = new Usuario();
+        $usuarioEncontrado = $modeloUsuario->obtenerPorNombreUsuario($usuario);
 
-        $stmt = $pdo->prepare("SELECT * FROM usuarios WHERE usuario = ? AND estado = 'activo'");
-        $stmt->execute([$usuario]);
-        $usuarioEncontrado = $stmt->fetch();
-
-        if ($usuarioEncontrado && password_verify($contrasena, $usuarioEncontrado['contrasena'])) {
-            session_start();
-            $_SESSION['usuario_id'] = $usuarioEncontrado['id'];
-            $_SESSION['usuario'] = $usuarioEncontrado['usuario'];
-            $_SESSION['rol'] = $usuarioEncontrado['rol'];
-            header('Location: /dashboard');
-            exit;
+        $hash = is_array($usuarioEncontrado)
+            ? (string) ($usuarioEncontrado['password'] ?? $usuarioEncontrado['contrasena'] ?? '')
+            : '';
+        if ($usuarioEncontrado && $hash !== '' && $modeloUsuario->verificarContrasena($contrasena, $hash)) {
+            Auth::iniciarSesion([
+                'id'     => $usuarioEncontrado['id'],
+                'nombre' => $usuarioEncontrado['nombre'],
+                'rol'    => $usuarioEncontrado['rol_nombre'] ?? $usuarioEncontrado['rol'] ?? $usuarioEncontrado['rol_id'] ?? '',
+            ]);
+            redirigir('/dashboard');
         } else {
-            header('Location: /login?error=1');
-            exit;
+            redirigir('/login?error=1');
         }
-        */
-
-        // Render directo de la vista (maquetado frontend sin DB).
-        require_once __DIR__ . '/../views/login.php';
     }
 
     // Cierra la sesión del usuario.
     public function logout()
     {
-        /*
-        // Cierre de sesión (comentado temporalmente):
-        session_start();
-        session_destroy();
-        */
-
-        header('Location: /login');
-        exit;
+        Auth::cerrar();
+        redirigir('/login');
     }
 }

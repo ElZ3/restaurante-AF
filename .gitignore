@@ -7,6 +7,7 @@ vendor/
 
 # IDE / Editor / IA (archivos locales y credenciales)
 .vscode/
+.vscode/sftp.json
 .opencode/
 .idea/
 *.swp

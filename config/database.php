@@ -4,9 +4,9 @@
 
 return [
     'host'     => 'localhost',
-    'dbname'   => 'restaurate_af',
+    'dbname'   => 'olivo_real',
     'username' => 'root',
-    'password' => '',
+    'password' => 'AF123!',
     'charset'  => 'utf8mb4',
     'options'  => [
         PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
