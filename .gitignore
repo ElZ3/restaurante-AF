@@ -30,3 +30,10 @@ olivo-real/*
 
 # Excepción: Permitir únicamente AVANCE1.md
 !AVANCE1.md
+
+# Documentación, scripts SQL y archivos temporales
+*.txt
+*.docx
+*.sql
+docs/
+_schema_check.php
