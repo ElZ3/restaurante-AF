@@ -21,6 +21,7 @@ $estados = $estados ?? [
 $datos_pantalla = [
     'pedidos'   => is_array($pedidos) ? $pedidos : [],
     'productos' => is_array($productos) ? $productos : [],
+    'usuario_id' => (int) (Auth::usuario()['id'] ?? 0),
     'usuario'   => $usuario
 ];
 
@@ -30,24 +31,22 @@ ob_start();
 ?>
 <!-- Barra de Filtros -->
 <div class="tarjeta mb-3">
-  <div class="barra-filtros d-flex flex-wrap align-items-end gap-3">
+  <div class="barra-filtros">
     <div>
-      <label class="form-label mb-1 fw-semibold" for="fEstado">Estado</label>
+      <label class="form-label" for="fEstado">Estado</label>
       <select id="fEstado" class="form-select">
         <option value="">Todos</option>
         <?php foreach ($estados as $k => $t): ?>
-          <option value="<?= $k ?>"><?= htmlspecialchars($t) ?></option>
+          <option value="<?= e($k) ?>"><?= e($t) ?></option>
         <?php endforeach; ?>
       </select>
     </div>
     <div>
-      <label class="form-label mb-1 fw-semibold" for="fBuscar">Buscar</label>
+      <label class="form-label" for="fBuscar">Buscar</label>
       <input type="search" id="fBuscar" class="form-control" placeholder="N.º de mesa o de pedido">
     </div>
     <div class="flex-grow-0 ms-auto">
-      <button type="button" id="btnNuevo" class="btn btn-olivo d-inline-flex align-items-center gap-1">
-        <i class="bi bi-plus-lg"></i> Nuevo pedido
-      </button>
+      <button type="button" id="btnNuevo" class="btn btn-olivo"><i class="bi bi-plus-lg me-1"></i>Nuevo pedido</button>
     </div>
   </div>
 </div>
@@ -55,7 +54,7 @@ ob_start();
 <!-- Tabla de Pedidos -->
 <div class="tarjeta">
   <div class="table-responsive">
-    <table class="table tabla-olivo align-middle mb-0">
+    <table class="table tabla-olivo">
       <thead>
         <tr>
           <th>Pedido</th>
@@ -81,9 +80,9 @@ ob_start();
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
       </div>
       <div class="modal-body">
-        <p class="small mb-3 text-secondary" id="detInfo"></p>
+        <p class="small mb-3" id="detInfo"></p>
         <div class="table-responsive">
-          <table class="table tabla-olivo align-middle mb-0">
+          <table class="table tabla-olivo">
             <thead>
               <tr>
                 <th>Producto</th>
@@ -118,16 +117,13 @@ ob_start();
       <div class="modal-body">
         <div class="row g-3 mb-3">
           <div class="col-md-6">
-            <label class="form-label fw-semibold" for="npMesa">Mesa</label>
+            <label class="form-label" for="npMesa">Mesa</label>
             <select id="npMesa" class="form-select">
               <option value="">Elige una mesa</option>
               <?php foreach ($mesas as $m): ?>
-                <?php 
-                  $num = is_array($m) ? ($m['numero_mesa'] ?? $m[0] ?? $m['id']) : $m;
-                  $cap = is_array($m) ? ($m['capacidad'] ?? $m[1] ?? '') : '';
-                ?>
-                <option value="<?= htmlspecialchars($num) ?>">
-                  Mesa <?= htmlspecialchars($num) ?><?= $cap ? " · {$cap} personas" : '' ?>
+                <?php $num = $m['numero_mesa'] ?? $m['id']; $cap = $m['capacidad'] ?? ''; ?>
+                <option value="<?= (int) $m['id'] ?>">
+                  Mesa <?= e($num) ?><?= $cap ? ' · ' . (int) $cap . ' personas' : '' ?>
                 </option>
               <?php endforeach; ?>
             </select>
@@ -139,7 +135,7 @@ ob_start();
             <div class="d-flex flex-wrap gap-2 mb-2" id="npCats">
               <button type="button" class="chip-area activo" data-cat="Todas">Todas</button>
               <?php foreach ($categorias as $c): ?>
-                <button type="button" class="chip-area" data-cat="<?= htmlspecialchars($c) ?>"><?= htmlspecialchars($c) ?></button>
+                <button type="button" class="chip-area" data-cat="<?= (int) ($c['id'] ?? 0) ?>"><?= e($c['nombre'] ?? '') ?></button>
               <?php endforeach; ?>
             </div>
             <div class="lista-productos border rounded p-2" id="npProductos" style="max-height: 300px; overflow-y: auto;"></div>
@@ -166,6 +162,9 @@ ob_start();
 $contenido = ob_get_clean();
 
 $scripts_extra = '<script>window.DATOS = ' . $datos_json . ';</script>' . "\n";
+$scripts_extra .= '<script>
+  const CSRF = ' . json_encode(Csrf::token()) . ';
+</script>' . "\n";
 $scripts_extra .= <<<'JS'
 <script>
 (function () {
@@ -173,17 +172,13 @@ $scripts_extra .= <<<'JS'
   const ETQ = {
     borrador: 'Borrador',
     pendiente: 'Pendiente',
-    Abierta: 'Pendiente',
     en_preparacion: 'En preparación',
-    'En Preparacion': 'En preparación',
     lista: 'Lista',
-    Servida: 'Lista',
     entregada: 'Entregada',
-    Pagada: 'Entregada',
     cancelado: 'Cancelado',
-    Cancelada: 'Cancelado'
+    pagado: 'Pagado'
   };
-  const clase = e => e === 'en_preparacion' || e === 'En Preparacion' ? 'preparacion' : (e === 'Servida' ? 'lista' : (e === 'Pagada' ? 'entregada' : (e === 'Abierta' ? 'pendiente' : e)));
+  const clase = e => e === 'en_preparacion' ? 'preparacion' : e;
   const money = n => '$' + (parseFloat(n) || 0).toFixed(2);
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const $ = id => document.getElementById(id);
@@ -219,7 +214,7 @@ $scripts_extra .= <<<'JS'
       const totalPedido = p.total ? parseFloat(p.total) : total(p.items || []);
       const mesaNum = p.mesa || p.mesa_numero || '—';
       const meseroNom = p.mesero || p.usuario_nombre || 'Sistema';
-      const horaStr = p.hora || (p.creado_en ? p.creado_en.slice(11, 16) : '—');
+      const horaStr = p.hora || (p.fecha ? p.fecha.slice(11, 16) : '—');
       const stClase = clase(p.estado);
       const stNombre = ETQ[p.estado] || p.estado;
 
@@ -247,16 +242,37 @@ $scripts_extra .= <<<'JS'
     if (s) enviar(+s.dataset.enviar);
   });
 
+  /* ---------- Refresco de datos vía Fetch con esqueleto de carga ---------- */
+  async function refrescarPedidos() {
+    mostrarSkeleton('tbodyPedidos', 'fila', 6);
+    try {
+      const res = await fetch('/pedidos/listar', {
+        method: 'GET',
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+      });
+      const data = await res.json();
+      PED.length = 0;
+      (data.pedidos || []).forEach(p => PED.push(p));
+      PROD.length = 0;
+      (data.productos || []).forEach(p => PROD.push(p));
+      pintar();
+    } catch (err) {
+      aviso('No se pudo actualizar la información de pedidos.', 'danger');
+    } finally {
+      ocultarSkeleton('tbodyPedidos');
+    }
+  }
+
   /* ---------- Modal Detalle ---------- */
   function ver(id) {
-    const p = PED.find(x => x.id === id);
+    const p = PED.find(x => Number(x.id) === Number(id));
     if (!p) return;
     detalleId = id;
     const items = p.items || [];
     const totalPedido = p.total ? parseFloat(p.total) : total(items);
     const mesaNum = p.mesa || p.mesa_numero || '—';
     const meseroNom = p.mesero || p.usuario_nombre || 'Sistema';
-    const horaStr = p.hora || (p.creado_en ? p.creado_en.slice(11, 16) : '—');
+    const horaStr = p.hora || (p.fecha ? p.fecha.slice(11, 16) : '—');
 
     $('detTitulo').textContent = 'Pedido #' + p.id + ' · Mesa ' + mesaNum;
     $('detInfo').innerHTML = 'Mesero: <strong>' + esc(meseroNom) + '</strong> · ' + esc(horaStr) +
@@ -266,7 +282,7 @@ $scripts_extra .= <<<'JS'
       const cant = i.c || i.cantidad || 1;
       const prec = i.p || i.precio || i.precio_unitario || 0;
       const nom = i.n || i.nombre || i.producto_nombre || 'Producto';
-      const obs = i.o || i.notas || '';
+      const obs = i.o || i.observaciones || '';
       return `
       <tr>
         <td>${esc(nom)}${obs ? '<br><small class="text-secondary">' + esc(obs) + '</small>' : ''}</td>
@@ -282,11 +298,25 @@ $scripts_extra .= <<<'JS'
   }
 
   function enviar(id) {
-    const p = PED.find(x => x.id === id);
+    const p = PED.find(x => Number(x.id) === Number(id));
     if (!p || p.estado !== 'borrador') return;
-    p.estado = 'pendiente';
-    pintar();
-    mDet.hide();
+    const btn = $('btnEnviarDet');
+    conSpinner(btn);
+    fetch('/pedidos/actualizar-estado/' + id, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+      body: new URLSearchParams({ estado: 'pendiente', csrf: CSRF })
+    })
+      .then(r => r.json())
+      .then(res => {
+        liberarSpinner(btn);
+        if (!res.success) { aviso(res.message || 'Error al enviar a cocina', 'danger'); return; }
+        p.estado = 'pendiente';
+        pintar();
+        mDet.hide();
+        aviso('Pedido enviado a cocina', 'success');
+      })
+      .catch(err => { liberarSpinner(btn); aviso('Error de conexión: ' + err.message, 'danger'); });
   }
   $('btnEnviarDet').addEventListener('click', () => enviar(detalleId));
 
@@ -295,7 +325,7 @@ $scripts_extra .= <<<'JS'
   const selMesa = $('npMesa'), listaProd = $('npProductos'), listaCart = $('npCarrito');
 
   function pintarProductos() {
-    const prods = PROD.filter(p => cat === 'Todas' || p.cat === cat || p.categoria_nombre === cat);
+    const prods = PROD.filter(p => Number(p.disponible) === 1 && (cat === 'Todas' || String(p.categoria_id) === String(cat)));
     if (!prods.length) {
       listaProd.innerHTML = '<p class="text-secondary small mb-0 py-3 text-center">No hay productos en esta categoría.</p>';
       return;
@@ -332,7 +362,7 @@ $scripts_extra .= <<<'JS'
   listaProd.addEventListener('click', e => {
     const b = e.target.closest('[data-add]');
     if (!b) return;
-    const pr = PROD.find(x => x.id === +b.dataset.add);
+    const pr = PROD.find(x => Number(x.id) === Number(b.dataset.add));
     if (!pr) return;
     const idProd = pr.id;
     const nomProd = pr.n || pr.nombre;
@@ -365,36 +395,49 @@ $scripts_extra .= <<<'JS'
     pintarProductos();
   });
 
-  $('btnNuevo').addEventListener('click', () => {
+  function limpiarNuevo() {
     cart = []; cat = 'Todas';
     selMesa.value = ''; selMesa.classList.remove('is-invalid');
     document.querySelectorAll('#npCats .chip-area').forEach(c => c.classList.toggle('activo', c.dataset.cat === 'Todas'));
     pintarProductos();
     pintarCarrito();
+  }
+
+  $('btnNuevo').addEventListener('click', () => {
+    limpiarNuevo();
     mNuevo.show();
   });
 
   function guardar(estado) {
     if (!selMesa.value) { selMesa.classList.add('is-invalid'); return; }
     selMesa.classList.remove('is-invalid');
-    if (!cart.length) return;
-    
-    const id = PED.reduce((m, p) => Math.max(m, p.id || 0), 100) + 1;
-    const ahora = new Date();
-    const hora = String(ahora.getHours()).padStart(2, '0') + ':' + String(ahora.getMinutes()).padStart(2, '0');
-    
-    PED.unshift({
-      id: id,
-      mesa: selMesa.value,
-      mesero: D.usuario || 'Mesero',
-      hora: hora,
+    if (!cart.length) { aviso('Agrega al menos un producto al pedido.', 'danger'); return; }
+    if (cart.some(l => !Number.isInteger(l.c) || l.c < 1 || !(Number(l.p) > 0))) { aviso('Las cantidades deben ser enteros mayores a 0 y los precios mayores a 0.', 'danger'); return; }
+
+    const btnGuardar = estado === 'borrador' ? $('btnBorrador') : $('btnEnviarNuevo');
+    conSpinner(btnGuardar);
+
+    const payload = {
+      mesa_id: selMesa.value,
       estado: estado,
-      total: total(cart),
-      items: cart.map(l => ({ n: l.n, c: l.c, p: l.p, o: l.o.trim() }))
-    });
-    
-    pintar();
-    mNuevo.hide();
+      items: cart.map(l => ({ producto_id: l.id, cantidad: l.c, observaciones: (l.o || '').trim() }))
+    };
+
+    fetch('/pedidos/crear', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+      body: new URLSearchParams({ ...payload, items: JSON.stringify(payload.items), csrf: CSRF })
+    })
+      .then(r => r.json())
+      .then(res => {
+        liberarSpinner(btnGuardar);
+        if (!res.success) { aviso(res.message || 'Error al crear el pedido', 'danger'); return; }
+        mNuevo.hide();
+        limpiarNuevo();
+        aviso('Pedido creado y enviado a cocina', 'success');
+        refrescarPedidos();
+      })
+      .catch(err => { liberarSpinner(btnGuardar); aviso('Error de conexión: ' + err.message, 'danger'); });
   }
 
   $('btnBorrador').addEventListener('click', () => guardar('borrador'));
@@ -405,5 +448,5 @@ $scripts_extra .= <<<'JS'
 </script>
 JS;
 
-require_once __DIR__ . '/layout.php';
+require_once __DIR__ . '/../layout.php';
 render_app_layout($titulo, $pagina, $contenido, $scripts_extra);

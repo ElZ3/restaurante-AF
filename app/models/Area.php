@@ -1,7 +1,7 @@
 <?php
 // Modelo: Area.php
-// Tabla: areas
-// Áreas o sectores del restaurante (ej. comedor, terraza, barra, VIP).
+// Tabla: areas (esquema olivo_real.sql)
+// Columnas: id, nombre, descripcion
 
 class Area
 {
@@ -14,14 +14,15 @@ class Area
 
     public function obtenerTodos(): array
     {
-        $stmt = $this->db->query("SELECT * FROM areas ORDER BY nombre ASC");
+        $stmt = $this->db->query("SELECT * FROM areas ORDER BY nombre ASC", []);
         return $stmt->fetchAll();
     }
 
     public function obtenerPorId(int $id): ?array
     {
         $stmt = $this->db->query("SELECT * FROM areas WHERE id = ?", [$id]);
-        return $stmt->fetch();
+        $resultado = $stmt->fetch();
+        return $resultado !== false ? $resultado : null;
     }
 
     public function crear(string $nombre, string $descripcion = ''): bool
@@ -35,11 +36,14 @@ class Area
 
     public function actualizar(int $id, string $nombre, string $descripcion = ''): bool
     {
+        if (!$this->obtenerPorId($id)) {
+            return false;
+        }
         $stmt = $this->db->query(
             "UPDATE areas SET nombre = ?, descripcion = ? WHERE id = ?",
             [$nombre, $descripcion, $id]
         );
-        return $stmt->rowCount() > 0;
+        return true;
     }
 
     public function eliminar(int $id): bool

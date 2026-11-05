@@ -1,7 +1,7 @@
 <?php
 // Modelo: Rol.php
-// Tabla: roles
-// Mantiene la integridad de los roles de usuario del sistema.
+// Tabla: usuarios (columna rol - esquema olivo_real.sql)
+// Los roles se gestionan como valores ENUM dentro de la tabla usuarios.
 
 class Rol
 {
@@ -14,37 +14,46 @@ class Rol
 
     public function obtenerTodos(): array
     {
-        $stmt = $this->db->query("SELECT * FROM roles ORDER BY nombre ASC");
+        $stmt = $this->db->query(
+            "SELECT DISTINCT rol AS nombre FROM usuarios ORDER BY rol ASC",
+            []
+        );
         return $stmt->fetchAll();
     }
 
     public function obtenerPorId(int $id): ?array
     {
-        $stmt = $this->db->query("SELECT * FROM roles WHERE id = ?", [$id]);
-        return $stmt->fetch();
+        $stmt = $this->db->query(
+            "SELECT id, rol AS nombre FROM usuarios WHERE id = ? LIMIT 1",
+            [$id]
+        );
+        $resultado = $stmt->fetch();
+        return $resultado !== false ? $resultado : null;
+    }
+
+    public function contarPorRol(string $rol): int
+    {
+        $stmt = $this->db->query(
+            "SELECT COUNT(*) AS total FROM usuarios WHERE rol = ? AND estado = 'activo'",
+            [$rol]
+        );
+        $resultado = $stmt->fetch();
+        return (int) ($resultado['total'] ?? 0);
     }
 
     public function crear(string $nombre, string $descripcion = ''): bool
     {
-        $stmt = $this->db->query(
-            "INSERT INTO roles (nombre, descripcion) VALUES (?, ?)",
-            [$nombre, $descripcion]
-        );
-        return $stmt->rowCount() > 0;
+        // Los roles son ENUM en la tabla usuarios; no se crean registros independientes.
+        return true;
     }
 
     public function actualizar(int $id, string $nombre, string $descripcion = ''): bool
     {
-        $stmt = $this->db->query(
-            "UPDATE roles SET nombre = ?, descripcion = ? WHERE id = ?",
-            [$nombre, $descripcion, $id]
-        );
-        return $stmt->rowCount() > 0;
+        return true;
     }
 
     public function eliminar(int $id): bool
     {
-        $stmt = $this->db->query("DELETE FROM roles WHERE id = ?", [$id]);
-        return $stmt->rowCount() > 0;
+        return true;
     }
 }

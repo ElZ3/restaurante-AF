@@ -10,7 +10,7 @@ spl_autoload_register(function ($class) {
     $relativePath = preg_replace('/^App\//i', '', $classPath);
     $className = basename($relativePath);
 
-    $baseDir = dirname(__DIR__) . '/app/';
+        $baseDir = dirname(__DIR__) . '/app/';
 
     $possibleFiles = [
         $baseDir . $relativePath . '.php',
@@ -53,6 +53,14 @@ spl_autoload_register(function ($class) {
 require_once __DIR__ . '/../app/core/helpers.php';
 require_once __DIR__ . '/../app/core/Auth.php';
 
+// Constantes globales de rutas (portabilidad local <-> HestiaCP).
+if (!defined('APP_PATH')) {
+    define('APP_PATH', dirname(__DIR__) . '/app/');
+}
+if (!defined('PUBLIC_PATH')) {
+    define('PUBLIC_PATH', dirname(__DIR__) . '/public/');
+}
+
 if (!defined('MODO_DEMO')) {
     define('MODO_DEMO', getenv('OLIVO_MODO_DEMO') === '1');
 }
@@ -84,7 +92,7 @@ $rutasEstaticas = [
     'cocina'   => ['ModuloController', 'cocina'],
     'reservas' => ['ModuloController', 'reservas'],
     'reportes' => ['ModuloController', 'reportes'],
-    'cuentas'  => null, // se renderiza vista directamente
+    'cuentas'  => ['CuentaController', 'index'],
     'configuracion' => ['ModuloController', 'configuracion'],
 ];
 
@@ -102,6 +110,32 @@ $rutasParametrizadas = [
     'mesas/actualizar/:id'=> ['MesaController',     'actualizar'],
     'mesas/cambiar-estado/:id' => ['MesaController', 'cambiarEstado'],
     'mesas/eliminar/:id'  => ['MesaController',     'eliminar'],
+    'categorias/crear'    => ['CategoriaController','crear'],
+    'categorias/editar/:id'=> ['CategoriaController','editar'],
+    'categorias/actualizar/:id' => ['CategoriaController','actualizar'],
+    'categorias/eliminar/:id' => ['CategoriaController','eliminar'],
+    'productos/crear'     => ['ProductoController','crear'],
+    'productos/listar'    => ['ProductoController','listar'],
+    'productos/editar/:id'=> ['ProductoController','editar'],
+    'productos/actualizar/:id' => ['ProductoController','actualizar'],
+    'productos/toggle/:id'=> ['ProductoController','toggle'],
+    'productos/eliminar/:id' => ['ProductoController','eliminar'],
+    'pedidos/crear'       => ['PedidoController','crear'],
+    'pedidos/listar'      => ['ModuloController','listar'],
+    'pedidos/obtener/:id' => ['PedidoController','obtenerPorId'],
+    'pedidos/actualizar-estado/:id' => ['PedidoController','actualizarEstado'],
+    'pedidos/eliminar/:id'=> ['PedidoController','eliminar'],
+    'pagos/registrar'     => ['CuentaController','registrarPago'],
+    'pagos/obtener/:id'   => ['PagoController','obtenerPorPedido'],
+    'reservas/crear'      => ['ReservaController','crear'],
+    'reservas/mesas-disponibles' => ['ReservaController', 'mesasDisponibles'],
+    'reservas/actualizar/:id' => ['ReservaController','actualizar'],
+    'reservas/actualizar-estado/:id' => ['ReservaController','actualizarEstado'],
+    'reservas/eliminar/:id'=> ['ReservaController','eliminar'],
+    'areas/crear'         => ['AreaController','crear'],
+    'areas/actualizar/:id'=> ['AreaController','actualizar'],
+    'areas/eliminar/:id'  => ['AreaController','eliminar'],
+    'configuracion/actualizar' => ['ConfiguracionController', 'actualizar'],
 ];
 
 // Resolver controlador, acción y parámetros.
@@ -160,11 +194,16 @@ if ($controlador !== null) {
 }
 
 // Renderizar vista directamente cuando no hay controlador asociado.
-// Las vistas ahora residen en public/views/ (misma carpeta que el front controller).
 if ($vista !== null) {
-    $vistaArchivo = __DIR__ . '/views/' . $vista . '.php';
+    $vistaArchivo = __DIR__ . '/views/' . $vista . '/index.php';
     if (file_exists($vistaArchivo)) {
         require_once $vistaArchivo;
+        exit;
+    }
+    // Fallback: intentar ruta plana (para login.php y otras vistas no movidas)
+    $vistaArchivoPlano = __DIR__ . '/views/' . $vista . '.php';
+    if (file_exists($vistaArchivoPlano)) {
+        require_once $vistaArchivoPlano;
         exit;
     }
 }

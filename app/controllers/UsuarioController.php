@@ -1,115 +1,133 @@
 <?php
-// Controlador: UsuarioController.php
-// Maneja el CRUD de usuarios del sistema.
-// NOTA (regla temporal de colaboración): la validación de sesión, el
-// bloqueo de rutas y las consultas a la base de datos están programadas
-// pero COMENTADAS para que las vistas carguen directamente durante el
-// maquetado frontend, sin requerir conexión a la base de datos local.
-
-require_once __DIR__ . '/../models/Usuario.php';
-require_once __DIR__ . '/../models/Rol.php';
 
 class UsuarioController
 {
-    // Muestra el listado de usuarios.
-    public function index()
+    private function exigirAdmin(): void
     {
         Auth::exigirRol(Menu::roles('usuarios'));
-
-        $modeloUsuario = new Usuario();
-        $usuarios = $modeloUsuario->obtenerTodos();
-
-        require_once __DIR__ . '/../../public/views/usuarios.php';
     }
 
-    // Muestra el formulario para crear un nuevo usuario.
-    public function nuevo()
-    {
-        $modeloRol = new Rol();
-        $roles = $modeloRol->obtenerTodos();
-
-        require_once __DIR__ . '/../../public/views/usuarios.php';
-    }
-
-    // Guarda un nuevo usuario.
-    public function crear()
+    private function validarPost(): void
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header('Location: /usuarios');
-            exit;
+            respuestaJson(['success' => false, 'message' => 'Método no permitido.'], 405);
         }
-
-        /*
-        // Lógica de creación integrada con modelo Usuario (comentada temporalmente):
-        $nombre     = $_POST['nombre'] ?? '';
-        $usuario    = $_POST['usuario'] ?? $_POST['email'] ?? '';
-        $rolId      = (int) ($_POST['rol_id'] ?? 0);
-        $contrasena = $_POST['contrasena'] ?? '';
-        $estado     = $_POST['estado'] ?? 'activo';
-
-        $modeloUsuario = new Usuario();
-        $modeloUsuario->crear($nombre, $usuario, $contrasena, $rolId, $estado);
-
-        header('Location: /usuarios?creado=1');
-        exit;
-        */
-
-        header('Location: /usuarios');
-        exit;
-    }
-
-    // Muestra el formulario para editar un usuario.
-    public function editar($id)
-    {
-        /*
-        // Consulta integrada con modelo Usuario (comentada temporalmente):
-        $modeloUsuario = new Usuario();
-        $usuario = $modeloUsuario->obtenerPorId((int) $id);
-        */
-
-        $usuario = [];
-        require_once __DIR__ . '/../../public/views/usuarios.php';
-    }
-
-    // Actualiza un usuario existente.
-    public function actualizar($id)
-    {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header('Location: /usuarios');
-            exit;
+        if (!Csrf::validar((string) ($_POST['csrf'] ?? ''))) {
+            respuestaJson(['success' => false, 'message' => 'Token CSRF inválido.'], 403);
         }
-
-        /*
-        // Lógica de actualización integrada con modelo Usuario (comentada temporalmente):
-        $nombre   = $_POST['nombre'] ?? '';
-        $usuario  = $_POST['usuario'] ?? $_POST['email'] ?? '';
-        $rolId    = (int) ($_POST['rol_id'] ?? 0);
-        $estado   = $_POST['estado'] ?? 'activo';
-
-        $modeloUsuario = new Usuario();
-        $modeloUsuario->actualizar((int) $id, $nombre, $usuario, $rolId, $estado);
-
-        header('Location: /usuarios?actualizado=1');
-        exit;
-        */
-
-        header('Location: /usuarios');
-        exit;
     }
 
-    // Elimina un usuario.
-    public function eliminar($id)
+    private function datos(): array
     {
-        /*
-        // Lógica de eliminación integrada con modelo Usuario (comentada temporalmente):
-        $modeloUsuario = new Usuario();
-        $modeloUsuario->eliminar((int) $id);
+        $nombre = normalizarEspacios((string) ($_POST['nombre'] ?? ''));
+        if ($nombre !== '' && !esNombreValido($nombre, 100)) {
+            respuestaJson(['success' => false, 'message' => 'El nombre solo puede contener letras y espacios.'], 400);
+        }
+        $correo = strtolower(trim((string) ($_POST['correo'] ?? '')));
+        $rol = (string) ($_POST['rol'] ?? '');
+        $estado = (string) ($_POST['estado'] ?? 'activo');
+        if ($nombre === '' || !filter_var($correo, FILTER_VALIDATE_EMAIL)
+            || !in_array($rol, ['admin', 'mesero', 'cocina', 'cajero'], true)
+            || !in_array($estado, ['activo', 'inactivo'], true)) {
+            respuestaJson(['success' => false, 'message' => 'Completa nombre, correo, rol y estado válidos.'], 400);
+        }
+        return [$nombre, $correo, $rol, $estado];
+    }
 
-        header('Location: /usuarios?eliminado=1');
-        exit;
-        */
+    public function index(): void
+    {
+        $this->exigirAdmin();
+        $usuarios = (new Usuario())->obtenerTodos();
+        require __DIR__ . '/../../public/views/usuarios/index.php';
+    }
 
-        header('Location: /usuarios');
-        exit;
+    public function nuevo(): void
+    {
+        $this->index();
+    }
+
+    public function crear(): void
+    {
+        $this->exigirAdmin();
+        $this->validarPost();
+        [$nombre, $correo, $rol, $estado] = $this->datos();
+        $contrasena = (string) ($_POST['contrasena'] ?? '');
+        if (strlen($contrasena) < 10) {
+            respuestaJson(['success' => false, 'message' => 'La contraseña debe tener al menos 10 caracteres.'], 400);
+        }
+        try {
+            $ok = (new Usuario())->crear($nombre, $correo, $contrasena, $rol, $estado);
+            if (!$ok) {
+                respuestaJson(['success' => false, 'message' => 'No se pudo crear el usuario.'], 400);
+            }
+            respuestaJson([
+                'success' => true,
+                'message' => 'Usuario creado correctamente.',
+                'usuario' => (new Usuario())->obtenerPorId((int) Database::getInstance()->lastInsertId()),
+            ], 201);
+        } catch (\PDOException $e) {
+            if ((string) $e->getCode() === '23000') {
+                respuestaJson(['success' => false, 'message' => 'Ya existe una cuenta con ese correo.'], 409);
+            }
+            respuestaJson(['success' => false, 'message' => 'No se pudo crear el usuario.'], 500);
+        }
+    }
+
+    public function editar($id): void
+    {
+        $this->exigirAdmin();
+        $usuario = (new Usuario())->obtenerPorId((int) $id);
+        if (!$usuario) {
+            http_response_code(404);
+            exit('Usuario no encontrado.');
+        }
+        $usuarios = (new Usuario())->obtenerTodos();
+        require __DIR__ . '/../../public/views/usuarios/index.php';
+    }
+
+    public function actualizar($id): void
+    {
+        $this->exigirAdmin();
+        $this->validarPost();
+        [$nombre, $correo, $rol, $estado] = $this->datos();
+        $modelo = new Usuario();
+        $usuario = $modelo->obtenerPorId((int) $id);
+        if (!$usuario) {
+            respuestaJson(['success' => false, 'message' => 'Usuario no encontrado.'], 404);
+        }
+        if ((int) $id === (int) (Auth::usuario()['id'] ?? 0) && $estado !== 'activo') {
+            respuestaJson(['success' => false, 'message' => 'No puedes desactivar tu propia cuenta.'], 400);
+        }
+        $contrasena = (string) ($_POST['contrasena'] ?? '');
+        if ($contrasena !== '' && strlen($contrasena) < 10) {
+            respuestaJson(['success' => false, 'message' => 'La contraseña debe tener al menos 10 caracteres.'], 400);
+        }
+        try {
+            $modelo->actualizar((int) $id, $nombre, $correo, $rol, $estado);
+            if ($contrasena !== '') {
+                $modelo->actualizarContrasena((int) $id, $contrasena);
+            }
+            respuestaJson([
+                'success' => true,
+                'message' => 'Usuario actualizado correctamente.',
+                'usuario' => $modelo->obtenerPorId((int) $id),
+            ]);
+        } catch (\PDOException $e) {
+            if ((string) $e->getCode() === '23000') {
+                respuestaJson(['success' => false, 'message' => 'Ya existe una cuenta con ese correo.'], 409);
+            }
+            respuestaJson(['success' => false, 'message' => 'No se pudo actualizar el usuario.'], 500);
+        }
+    }
+
+    public function eliminar($id): void
+    {
+        $this->exigirAdmin();
+        $this->validarPost();
+        if ((int) $id === (int) (Auth::usuario()['id'] ?? 0)) {
+            respuestaJson(['success' => false, 'message' => 'No puedes desactivar tu propia cuenta.'], 400);
+        }
+        $ok = (new Usuario())->eliminar((int) $id);
+        respuestaJson(['success' => $ok, 'message' => $ok ? 'Usuario desactivado.' : 'Usuario no encontrado.'], $ok ? 200 : 404);
     }
 }

@@ -1,7 +1,7 @@
 <?php
 // Modelo: Mesa.php
-// Tabla: mesas
-// Gestión de mesas del restaurante y su estado.
+// Tabla: mesas (esquema olivo_real.sql)
+// Columnas: id, area_id, numero_mesa, capacidad, estado, activo
 
 class Mesa
 {
@@ -14,7 +14,7 @@ class Mesa
 
     private function validarEstado(string $estado): void
     {
-        if (!in_array($estado, ['Libre', 'Ocupada', 'Reservada', 'Mantenimiento'], true)) {
+        if (!in_array($estado, ['disponible', 'reservada', 'ocupada', 'fuera_servicio'], true)) {
             throw new InvalidArgumentException('Estado de mesa no válido.');
         }
     }
@@ -26,7 +26,8 @@ class Mesa
                     a.nombre AS area_nombre
              FROM mesas m
              LEFT JOIN areas a ON m.area_id = a.id
-             ORDER BY m.id ASC'
+             ORDER BY m.id ASC',
+            []
         );
         return $stmt->fetchAll();
     }
@@ -42,7 +43,7 @@ class Mesa
         return $mesa === false ? null : $mesa;
     }
 
-    public function obtenerPorNumero(string $numero): ?array
+    public function obtenerPorNumero(int $numero): ?array
     {
         $stmt = $this->db->query(
             'SELECT id, area_id, numero_mesa, capacidad, estado, activo
@@ -54,29 +55,32 @@ class Mesa
     }
 
     public function crear(
-        string $numero,
+        int $numeroMesa,
         int $capacidad,
         int $areaId,
-        string $estado = 'Libre',
+        string $estado = 'disponible',
         bool $activo = true
     ): bool {
         $this->validarEstado($estado);
         $stmt = $this->db->query(
             'INSERT INTO mesas (numero_mesa, capacidad, area_id, estado, activo)
              VALUES (?, ?, ?, ?, ?)',
-            [$numero, $capacidad, $areaId, $estado, $activo ? 1 : 0]
+            [$numeroMesa, $capacidad, $areaId, $estado, $activo ? 1 : 0]
         );
         return $stmt->rowCount() > 0;
     }
 
-    public function actualizar(int $id, string $numero, int $capacidad, int $areaId, string $estado): bool
+    public function actualizar(int $id, int $numeroMesa, int $capacidad, int $areaId, string $estado): bool
     {
         $this->validarEstado($estado);
+        if (!$this->obtenerPorId($id)) {
+            return false;
+        }
         $stmt = $this->db->query(
             'UPDATE mesas SET numero_mesa = ?, capacidad = ?, area_id = ?, estado = ? WHERE id = ?',
-            [$numero, $capacidad, $areaId, $estado, $id]
+            [$numeroMesa, $capacidad, $areaId, $estado, $id]
         );
-        return $stmt->rowCount() > 0;
+        return true;
     }
 
     public function actualizarEstado(int $id, string $estado): bool
@@ -109,8 +113,9 @@ class Mesa
         $stmt = $this->db->query(
             "SELECT id, area_id, numero_mesa, capacidad, estado, activo
              FROM mesas
-             WHERE estado = 'Libre' AND activo = 1
-             ORDER BY numero_mesa ASC"
+             WHERE estado = 'disponible' AND activo = 1
+             ORDER BY numero_mesa ASC",
+            []
         );
         return $stmt->fetchAll();
     }

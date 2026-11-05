@@ -30,46 +30,35 @@ ob_start();
 </div>
 <div class="row g-3">
   <div class="col-lg-6">
-    <section class="tarjeta">
-      <h2 class="tarjeta-titulo">Ventas de los últimos 7 días</h2>
-      <?php if ($ventas_semana): ?>
-        <canvas id="graficoVentas" height="200" aria-label="Gráfico de ventas semanales"></canvas>
-      <?php else: ?>
-        <p class="text-secondary mb-0">No hay ventas registradas esta semana.</p>
-      <?php endif; ?>
-    </section>
+    <div class="tarjeta">
+      <div class="tarjeta-titulo">Ventas últimos 7 días</div>
+      <canvas id="graficoVentas" height="200"></canvas>
+    </div>
   </div>
   <div class="col-md-6 col-lg-3">
-    <section class="tarjeta">
-      <h2 class="tarjeta-titulo">Pedidos por estado</h2>
+    <div class="tarjeta">
+      <div class="tarjeta-titulo">Pedidos por estado</div>
       <ul class="lista-simple">
-        <?php if (!$pedidos_estado): ?>
-          <li class="text-secondary">No hay pedidos registrados.</li>
-        <?php else: ?>
-          <?php foreach ($pedidos_estado as [$nombre, $cantidad, $clase]): ?>
-            <li><span class="estado estado-<?= e($clase) ?>"><?= e($nombre) ?></span><strong><?= (int) $cantidad ?></strong></li>
-          <?php endforeach; ?>
-        <?php endif; ?>
+        <?php foreach ($pedidos_estado as [$nombre, $cantidad, $clase]): ?>
+          <li><span class="estado estado-<?= e($clase) ?>"><?= e($nombre) ?></span><strong><?= (int) $cantidad ?></strong></li>
+        <?php endforeach; ?>
       </ul>
-    </section>
+    </div>
   </div>
   <div class="col-md-6 col-lg-3">
-    <section class="tarjeta">
-      <h2 class="tarjeta-titulo">Reservas de hoy</h2>
+    <div class="tarjeta">
+      <div class="tarjeta-titulo">Reservas de hoy</div>
       <ul class="lista-simple">
-        <?php if (!$reservas_hoy): ?>
-          <li class="text-secondary">No hay reservas próximas.</li>
-        <?php else: ?>
-          <?php foreach ($reservas_hoy as [$hora, $cliente, $mesa, $estado]): ?>
-            <li>
-              <div><div class="fw-semibold"><?= e($cliente) ?></div><small class="text-secondary"><?= e($hora) ?> · <?= e($mesa) ?></small></div>
-              <span class="estado estado-<?= e($estado) ?>"><?= e(ucfirst($estado)) ?></span>
-            </li>
-          <?php endforeach; ?>
-        <?php endif; ?>
+        <?php foreach ($reservas_hoy as [$hora, $cliente, $mesa, $estado]): ?>
+          <li>
+            <div><div class="fw-semibold"><?= e($cliente) ?></div>
+              <small class="text-secondary"><?= e($hora) ?> · <?= e($mesa) ?></small></div>
+            <span class="estado estado-<?= e($estado) ?>"><?= e(ucfirst($estado)) ?></span>
+          </li>
+        <?php endforeach; ?>
       </ul>
-      <a href="/reservas" class="small d-block mt-2" style="color:var(--verde)">Ver todas <span aria-hidden="true">→</span></a>
-    </section>
+      <a href="/reservas" class="small d-block mt-2" style="color:var(--verde)">Ver todas →</a>
+    </div>
   </div>
 </div>
 <?php
@@ -90,5 +79,5 @@ HTML;
 } else {
     $scripts_extra = '';
 }
-require_once __DIR__ . '/layout.php';
+require_once __DIR__ . '/../layout.php';
 render_app_layout($titulo, $pagina, $contenido, $scripts_extra);

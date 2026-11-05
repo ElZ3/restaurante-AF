@@ -8,9 +8,16 @@ class DashboardController
     {
         Auth::exigirRol(Menu::roles('dashboard'));
 
-        $mesas = (new Mesa())->obtenerTodos();
-        $ordenes = (new Orden())->obtenerTodos();
-        $reservas = (new Reserva())->obtenerPorFecha(date('Y-m-d'));
+        $mesas = [];
+        $ordenes = [];
+        $reservas = [];
+        try {
+            $mesas = (new Mesa())->obtenerTodos();
+            $ordenes = (new Orden())->obtenerTodos();
+            $reservas = (new Reserva())->obtenerPorFecha(date('Y-m-d'));
+        } catch (\PDOException $e) {
+            error_log('[Dashboard] index: ' . $e->getMessage());
+        }
         $normalizarEstado = static function ($estado) {
             return strtolower(str_replace(
                 [' ', 'á', 'é', 'í', 'ó', 'ú'],
@@ -28,10 +35,10 @@ class DashboardController
         }));
 
         $categoriasEstado = [
-            'abierta' => 'pendiente',
+            'pendiente' => 'pendiente',
             'en_preparacion' => 'preparacion',
-            'servida' => 'lista',
-            'pagada' => 'entregada',
+            'lista' => 'lista',
+            'entregada' => 'entregada',
         ];
         $conteosEstado = [
             'pendiente' => ['Pendientes', 0, 'pendiente'],
@@ -52,18 +59,19 @@ class DashboardController
 
         $ventas_hoy = 0.0;
         $pedidos_cocina = 0;
-        $estadosCompletados = ['pagada'];
         foreach ($ordenes as $orden) {
+            $cuentaPagada = ($orden['estado_cuenta'] ?? '') === 'pagada';
             $estado = $normalizarEstado($orden['estado'] ?? '');
             if (isset($categoriasEstado[$estado])) {
                 $conteosEstado[$categoriasEstado[$estado]][1]++;
             }
-            if (in_array($estado, ['abierta', 'en_preparacion'], true)) {
+            if (in_array($estado, ['pendiente', 'en_preparacion'], true)) {
                 $pedidos_cocina++;
             }
 
-            $marcaTiempo = strtotime((string) ($orden['fecha_hora'] ?? ''));
-            if ($marcaTiempo === false || !in_array($estado, $estadosCompletados, true)) {
+            $marcaTiempo = strtotime((string) ($orden['fecha'] ?? ''));
+            // Ventas = pedidos con la cuenta cobrada (pedidos.estado_cuenta = 'pagada').
+            if ($marcaTiempo === false || !$cuentaPagada) {
                 continue;
             }
             $fechaOrden = date('Y-m-d', $marcaTiempo);
@@ -81,7 +89,10 @@ class DashboardController
         $reservas_prox = 0;
         foreach ($reservas as $reserva) {
             $estado = $normalizarEstado($reserva['estado'] ?? 'pendiente');
-            $hora = (string) ($reserva['hora_reserva'] ?? '');
+            $hora = (string) ($reserva['hora'] ?? '');
+            if ($hora === '') {
+                continue;
+            }
             $marcaTiempo = strtotime(date('Y-m-d') . ' ' . $hora);
             if ($marcaTiempo === false || $marcaTiempo < time() || $estado === 'cancelada') {
                 continue;
@@ -89,12 +100,12 @@ class DashboardController
             $reservas_prox++;
             $reservas_hoy[] = [
                 date('H:i', $marcaTiempo),
-                $reserva['cliente_nombre'] ?? 'Cliente',
+                $reserva['nombre_cliente'] ?? 'Cliente',
                 'Mesa ' . ($reserva['mesa_numero'] ?? $reserva['mesa_id'] ?? '—'),
                 $estado === 'confirmada' ? 'confirmada' : ($estado === 'completada' ? 'atendida' : 'pendiente'),
             ];
         }
 
-        require_once __DIR__ . '/../../public/views/dashboard.php';
+        require_once __DIR__ . '/../../public/views/dashboard/index.php';
     }
 }

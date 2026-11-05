@@ -25,9 +25,9 @@ $dias_periodo = max(1, (int) round((strtotime($hasta_val) - strtotime($desde_val
 ob_start();
 ?>
 <div class="tarjeta mb-3">
-  <form method="GET" action="/reportes" class="barra-filtros d-flex flex-wrap align-items-end gap-3">
+  <form method="GET" action="/reportes" class="barra-filtros">
     <div>
-      <label class="form-label mb-1 fw-semibold" for="tipo">Tipo de reporte</label>
+      <label class="form-label" for="tipo">Tipo de reporte</label>
       <select id="tipo" name="tipo" class="form-select">
         <?php foreach ($tipos as $k => $t): ?>
           <option value="<?= $k ?>" <?= (($_GET['tipo'] ?? '') === $k) ? 'selected' : '' ?>><?= $t ?></option>
@@ -35,27 +35,24 @@ ob_start();
       </select>
     </div>
     <div>
-      <label class="form-label mb-1 fw-semibold" for="desde">Desde</label>
+      <label class="form-label" for="desde">Desde</label>
       <input type="date" id="desde" name="desde" class="form-control" value="<?= htmlspecialchars($desde_val) ?>">
     </div>
     <div>
-      <label class="form-label mb-1 fw-semibold" for="hasta">Hasta</label>
+      <label class="form-label" for="hasta">Hasta</label>
       <input type="date" id="hasta" name="hasta" class="form-control" value="<?= htmlspecialchars($hasta_val) ?>">
     </div>
     <div class="flex-grow-0">
-      <button type="submit" id="btnGenerar" class="btn btn-olivo d-inline-flex align-items-center gap-1">
-        <i class="bi bi-arrow-repeat"></i> Generar
-      </button>
+      <button type="submit" id="btnGenerar" class="btn btn-olivo"><i class="bi bi-arrow-repeat me-1"></i>Generar</button>
     </div>
     <div class="flex-grow-0 ms-auto">
-      <button type="button" id="btnCsv" class="btn btn-outline-olivo d-inline-flex align-items-center gap-1">
-        <i class="bi bi-download"></i> Exportar CSV
-      </button>
+      <button type="button" id="btnCsv" class="btn btn-outline-olivo"><i class="bi bi-download me-1"></i>Exportar CSV</button>
     </div>
   </form>
 </div>
 
 <!-- Tarjetas KPI -->
+<div id="resultado">
 <div class="row g-3 mb-3">
   <div class="col-6 col-xl-3">
     <div class="tarjeta">
@@ -118,6 +115,7 @@ ob_start();
     </div>
   <?php endif; ?>
 </div>
+</div>
 
 <?php
 $contenido = ob_get_clean();
@@ -154,5 +152,5 @@ HTML;
     $scripts_extra = '';
 }
 
-require_once __DIR__ . '/layout.php';
+require_once __DIR__ . '/../layout.php';
 render_app_layout($titulo, $pagina, $contenido, $scripts_extra);

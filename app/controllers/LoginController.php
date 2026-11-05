@@ -33,23 +33,39 @@ class LoginController
             redirigir('/login?demo=desactivado');
         }
 
-        $usuario = trim((string) ($_POST['usuario'] ?? $_POST['email'] ?? ''));
+        $correo = trim((string) ($_POST['usuario'] ?? $_POST['email'] ?? ''));
         $contrasena = (string) ($_POST['contrasena'] ?? $_POST['password'] ?? '');
 
-        $modeloUsuario = new Usuario();
-        $usuarioEncontrado = $modeloUsuario->obtenerPorNombreUsuario($usuario);
+        // Bloqueo por fuerza bruta: consultar intentos_login
+        $pdo = Database::getInstance()->getConnection();
+        $ventana = date('Y-m-d H:i:s', strtotime('-15 minutes'));
+        $stmtInt = $pdo->prepare(
+            "SELECT COUNT(*) AS total FROM intentos_login WHERE correo = ? AND fecha > ?"
+        );
+        $stmtInt->execute([$correo, $ventana]);
+        $intento = $stmtInt->fetch();
+        if ($intento && (int) $intento['total'] >= 3) {
+            redirigir('/login?error=bloqueado');
+        }
 
-        $hash = is_array($usuarioEncontrado)
-            ? (string) ($usuarioEncontrado['password'] ?? $usuarioEncontrado['contrasena'] ?? '')
-            : '';
-        if ($usuarioEncontrado && $hash !== '' && $modeloUsuario->verificarContrasena($contrasena, $hash)) {
+        // Autenticar con modelo Usuario (usa correo y password_hash de olivo_real.sql)
+        $modeloUsuario = new Usuario();
+        $usuarioEncontrado = $modeloUsuario->autenticar($correo, $contrasena);
+
+        if ($usuarioEncontrado) {
+            // Éxito: limpiar intentos fallidos y crear sesión
+            $pdo->prepare("DELETE FROM intentos_login WHERE correo = ?")->execute([$correo]);
             Auth::iniciarSesion([
-                'id'     => $usuarioEncontrado['id'],
-                'nombre' => $usuarioEncontrado['nombre'],
-                'rol'    => $usuarioEncontrado['rol_nombre'] ?? $usuarioEncontrado['rol'] ?? $usuarioEncontrado['rol_id'] ?? '',
+                'id'    => $usuarioEncontrado['id'],
+                'nombre'=> $usuarioEncontrado['nombre'],
+                'rol'   => $usuarioEncontrado['rol'],
             ]);
             redirigir('/dashboard');
         } else {
+            // Fallo: registrar intento fallido
+            $pdo->prepare(
+                "INSERT INTO intentos_login (correo, ip, fecha) VALUES (?, ?, NOW())"
+            )->execute([$correo, $_SERVER['REMOTE_ADDR'] ?? '']);
             redirigir('/login?error=1');
         }
     }

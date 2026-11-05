@@ -12,6 +12,7 @@ $datos = [
     'cuentas'   => $cuentas,
     'historial' => $historial,
     'cajero'    => $cajero,
+    'usuario_id' => (int) (Auth::usuario()['id'] ?? 0),
     'descuento' => $descuento,
 ];
 
@@ -22,23 +23,39 @@ ob_start();
 <div class="row g-3 mb-3">
   <div class="col-lg-4">
     <div class="tarjeta">
-      <div class="tarjeta-titulo d-flex justify-content-between align-items-center">
+      <div class="tarjeta-titulo d-flex justify-content-between">
         <span>Cuentas abiertas</span>
-        <span class="badge bg-secondary rounded-pill" id="cntCuentas">0</span>
+        <span class="text-secondary fw-normal" id="cntCuentas">0</span>
       </div>
       <div id="listaCuentas"></div>
     </div>
   </div>
   <div class="col-lg-8" id="detalleCuenta"></div>
 </div>
+<div class="modal fade" id="modalCobro" tabindex="-1" aria-labelledby="tituloCobro" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+    <div class="modal-header"><h2 class="modal-title fs-5" id="tituloCobro">Cobrar cuenta</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+    <div class="modal-body">
+      <label class="form-label fw-semibold">Método de pago</label>
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        <input type="radio" class="btn-check" name="metodoCobro" id="mc_efectivo" value="efectivo" checked><label class="btn btn-outline-olivo" for="mc_efectivo">Efectivo</label>
+        <input type="radio" class="btn-check" name="metodoCobro" id="mc_tarjeta" value="tarjeta"><label class="btn btn-outline-olivo" for="mc_tarjeta">Tarjeta</label>
+        <input type="radio" class="btn-check" name="metodoCobro" id="mc_transferencia" value="transferencia"><label class="btn btn-outline-olivo" for="mc_transferencia">Transferencia</label>
+      </div>
+      <div class="mb-2"><label class="form-label" for="monto">Monto recibido ($)</label><input type="number" class="form-control" id="monto" step="0.01" min="0.01" required inputmode="decimal" data-validar="decimal-positivo"><div class="invalid-feedback" id="errMonto"></div></div>
+      <div class="d-flex justify-content-between"><span class="text-secondary">Cambio</span><strong id="cambio">$0.00</strong></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-olivo" id="btnPagar"><i class="bi bi-cash-coin me-1"></i>Registrar pago</button></div>
+  </div></div>
+</div>
 
 <div class="tarjeta">
-  <div class="tarjeta-titulo d-flex justify-content-between align-items-center flex-wrap gap-2">
+  <div class="tarjeta-titulo d-flex justify-content-between flex-wrap gap-2">
     <span>Pagos registrados hoy</span>
     <span class="fw-normal text-secondary">Total cobrado: <strong class="text-dark" id="totalCobrado">$0.00</strong></span>
   </div>
   <div class="table-responsive">
-    <table class="table tabla-olivo align-middle mb-0">
+    <table class="table tabla-olivo">
       <thead>
         <tr>
           <th>Pago</th>
@@ -59,6 +76,9 @@ ob_start();
 $contenido = ob_get_clean();
 
 $scripts_extra = '<script>window.DATOS = ' . $datos_json . ';</script>' . "\n";
+$scripts_extra .= '<script>
+  const CSRF = ' . json_encode(Csrf::token()) . ';
+</script>' . "\n";
 $scripts_extra .= <<<'JS'
 <script>
 (function () {
@@ -81,20 +101,19 @@ $scripts_extra .= <<<'JS'
     const abiertas = CU.filter(c => !c.cerrada);
     $('cntCuentas').textContent = abiertas.length;
     $('listaCuentas').innerHTML = abiertas.length ? abiertas.map(c => `
-      <button type="button" class="cuenta-item w-100 text-start p-2 mb-2 border rounded bg-light ${sel && sel.id === c.id ? 'activa border-success' : ''}" data-id="${c.id}">
+      <button type="button" class="cuenta-item ${sel && Number(sel.id) === Number(c.id) ? 'activa' : ''}" data-id="${c.id}">
         <div class="d-flex justify-content-between"><strong>Mesa ${esc(c.mesa || c.mesa_numero)}</strong><strong>${money(tot(c))}</strong></div>
         <div class="d-flex justify-content-between align-items-center mt-1">
           <small class="text-secondary">Pedido #${c.id}</small>
-          ${c.pagada ? '<span class="estado estado-confirmada">Pagada</span>'
-                     : '<span class="estado estado-' + clase(c.estado) + '">' + (ETQ[c.estado] || esc(c.estado)) + '</span>'}
+          <span class="estado estado-${clase(c.estado)}">${ETQ[c.estado] || esc(c.estado)}</span>
         </div>
-      </button>`).join('') : '<p class="text-secondary small mb-0 py-3 text-center">No hay cuentas abiertas.</p>';
+      </button>`).join('') : '<p class="text-secondary small mb-0">No hay cuentas abiertas.</p>';
   }
 
   $('listaCuentas').addEventListener('click', e => {
     const b = e.target.closest('[data-id]');
     if (!b) return;
-    sel = CU.find(c => c.id === +b.dataset.id);
+    sel = CU.find(c => Number(c.id) === Number(b.dataset.id));
     pintarLista();
     pintarDetalle();
   });
@@ -126,7 +145,7 @@ $scripts_extra .= <<<'JS'
       box.innerHTML = '<div class="tarjeta text-center text-secondary py-5"><i class="bi bi-receipt fs-1 d-block mb-2"></i>Elige una cuenta de la lista para ver su detalle y cobrar.</div>';
       return;
     }
-    const c = sel, cobrable = (c.estado === 'entregada' || c.estado === 'Servida' || c.estado === 'abierta') && !c.pagada;
+    const c = sel, cobrable = (c.estado === 'entregada' || c.estado === 'lista') && !c.pagada;
     const lineas = (c.items || []).map(i => {
       const cant = i.c || i.cantidad || 0;
       const prec = i.p || i.precio || 0;
@@ -145,31 +164,17 @@ $scripts_extra .= <<<'JS'
     }
 
     let pago;
-    if (c.pagada) {
-      pago = `<div class="alert alert-success small">Pago registrado: <strong>${METODOS[c.pago.metodo] || esc(c.pago.metodo)}</strong> · ${money(c.pago.recibido)}${c.pago.cambio ? ' · cambio ' + money(c.pago.cambio) : ''}</div>
-              <button type="button" class="btn btn-olivo w-100" id="btnCerrar"><i class="bi bi-lock me-1"></i>Cerrar cuenta y liberar mesa</button>`;
-    } else if (!cobrable) {
+    if (!cobrable) {
       pago = `<div class="alert alert-warning small mb-0">El pedido está <strong>${(ETQ[c.estado] || c.estado).toLowerCase()}</strong>. La cuenta solo se puede cobrar cuando el pedido esté listo o entregado.</div>`;
     } else {
-      pago = `
-        <label class="form-label">Método de pago</label>
-        <div class="d-flex flex-wrap gap-2 mb-3">
-          ${Object.keys(METODOS).map((k, n) => `<input type="radio" class="btn-check" name="metodo" id="m_${k}" value="${k}" ${n === 0 ? 'checked' : ''}><label class="btn btn-outline-olivo" for="m_${k}">${METODOS[k]}</label>`).join('')}
-        </div>
-        <div class="mb-2">
-          <label class="form-label" for="monto">Monto recibido ($)</label>
-          <input type="number" class="form-control" id="monto" step="0.01" min="0" inputmode="decimal">
-          <div class="invalid-feedback" id="errMonto"></div>
-        </div>
-        <div class="d-flex justify-content-between mb-3"><span class="text-secondary">Cambio</span><strong id="cambio">$0.00</strong></div>
-        <button type="button" class="btn btn-olivo w-100" id="btnPagar"><i class="bi bi-cash-coin me-1"></i>Registrar pago</button>`;
+      pago = '<button type="button" class="btn btn-olivo w-100" id="btnAbrirCobro"><i class="bi bi-cash-coin me-1"></i>Cobrar cuenta</button>';
     }
 
     box.innerHTML = `
       <div class="row g-3">
         <div class="col-md-7"><div class="tarjeta">
           <div class="tarjeta-titulo">Mesa ${esc(c.mesa || c.mesa_numero)} · Pedido #${c.id}</div>
-          <p class="small text-secondary">Mesero: ${esc(c.mesero || 'Sistema')} · ${esc(c.hora || '')}</p>
+          <p class="small text-secondary">Mesero: ${esc(c.mesero || 'Sistema')} · ${esc(c.fecha || '')}</p>
           <div class="table-responsive">
             <table class="table tabla-olivo"><thead><tr><th>Producto</th><th class="text-center">Cant.</th><th class="text-end">Precio</th><th class="text-end">Subtotal</th></tr></thead>
             <tbody>${lineas || '<tr><td colspan="4" class="text-center text-secondary">Sin ítems</td></tr>'}</tbody></table>
@@ -185,10 +190,16 @@ $scripts_extra .= <<<'JS'
           ${pago}
         </div></div>
       </div>`;
-    if (cobrable) actualizarPago(true);
+    if (cobrable) $('btnAbrirCobro').addEventListener('click', () => {
+      $('tituloCobro').textContent = 'Cobrar mesa ' + (c.mesa || c.mesa_numero) + ' · Pedido #' + c.id;
+      document.getElementById('mc_efectivo').checked = true;
+      document.getElementById('monto').value = '';
+      actualizarPago(true);
+      bootstrap.Modal.getOrCreateInstance($('modalCobro')).show();
+    });
   }
 
-  const metodoSel = () => { const r = document.querySelector('input[name="metodo"]:checked'); return r ? r.value : null; };
+  const metodoSel = () => { const r = document.querySelector('input[name="metodoCobro"]:checked'); return r ? r.value : null; };
 
   function actualizarPago(cambioMetodo) {
     const m = $('monto');
@@ -201,6 +212,10 @@ $scripts_extra .= <<<'JS'
   }
 
   const caja = $('detalleCuenta');
+  document.getElementById('modalCobro').addEventListener('input', e => {
+    if (e.target.id === 'monto') actualizarPago(false);
+  });
+  document.getElementById('modalCobro').addEventListener('change', e => { if (e.target.name === 'metodoCobro') actualizarPago(true); });
   caja.addEventListener('input', e => {
     if (e.target.id === 'descuento') {
       sel.desc = Math.min(100, Math.max(0, parseFloat(e.target.value) || 0));
@@ -208,43 +223,51 @@ $scripts_extra .= <<<'JS'
       actualizarPago(false);
       pintarLista();
     }
-    if (e.target.id === 'monto') actualizarPago(false);
   });
-  caja.addEventListener('change', e => { if (e.target.name === 'metodo') actualizarPago(true); });
-  caja.addEventListener('click', e => {
+  document.getElementById('modalCobro').addEventListener('click', e => {
     if (e.target.closest('#btnPagar')) pagar();
-    if (e.target.closest('#btnCerrar')) cerrar();
   });
 
   function pagar() {
     const c = sel, t = tot(c), m = $('monto');
+    const errorMonto = Validar.campo(m);
+    if (errorMonto) { m.classList.add('is-invalid'); $('errMonto').textContent = errorMonto; return; }
     const recibido = cents(parseFloat(m.value) || 0);
     if (t <= 0) { m.classList.add('is-invalid'); $('errMonto').textContent = 'El total debe ser mayor que cero.'; return; }
     if (recibido < t) { m.classList.add('is-invalid'); $('errMonto').textContent = 'El monto recibido no cubre el total (' + money(t) + ').'; return; }
-    $('btnPagar').disabled = true;
     const metodo = metodoSel();
-    c.pagada = true;
-    c.pago = { metodo: metodo, recibido: recibido, cambio: recibido - t };
-    HIS.unshift({
-      id: HIS.reduce((n, h) => Math.max(n, h.id || 0), 0) + 1,
-      pedido: c.id,
-      mesa: c.mesa || c.mesa_numero,
-      metodo: metodo,
-      monto: t / 100,
-      hora: new Date().toTimeString().slice(0, 5),
-      cajero: D.cajero || 'Cajero'
-    });
-    pintarLista();
-    pintarDetalle();
-    pintarHistorial();
-  }
-
-  function cerrar() {
-    const c = sel;
-    c.cerrada = true;
-    sel = null;
-    pintarLista();
-    pintarDetalle();
+    const btnPagarOriginal = $('btnPagar');
+    conSpinner(btnPagarOriginal);
+    fetch('/pagos/registrar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+      body: new URLSearchParams({ pedido_id: c.id, recibido: (recibido / 100).toFixed(2), metodo: metodo, csrf: CSRF })
+    })
+      .then(r => r.json())
+      .then(res => {
+        if (!res.success) { aviso(res.message || 'Error al registrar pago', 'danger'); return; }
+        c.pagada = true;
+        c.pago = { metodo: metodo, recibido: recibido, cambio: recibido - t };
+        HIS.unshift({
+          id: res.pago.pago_id,
+          pedido: c.id,
+          mesa: c.mesa || c.mesa_numero,
+          metodo: metodo,
+          monto: t / 100,
+          hora: new Date().toTimeString().slice(0, 5),
+          cajero: D.cajero || 'Cajero'
+        });
+        const index = CU.findIndex(x => Number(x.id) === Number(c.id));
+        if (index >= 0) CU.splice(index, 1);
+        sel = null;
+        pintarLista();
+        pintarDetalle();
+        pintarHistorial();
+        bootstrap.Modal.getOrCreateInstance($('modalCobro')).hide();
+        aviso('Pago registrado. La mesa quedó disponible.', 'success');
+      })
+      .catch(err => { aviso('Error de conexión: ' + err.message, 'danger'); })
+      .finally(() => liberarSpinner(btnPagarOriginal));
   }
 
   pintarLista();
@@ -254,5 +277,5 @@ $scripts_extra .= <<<'JS'
 </script>
 JS;
 
-require_once __DIR__ . '/layout.php';
+require_once __DIR__ . '/../layout.php';
 render_app_layout($titulo, $pagina, $contenido, $scripts_extra);

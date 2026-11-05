@@ -1,7 +1,25 @@
 <?php
 // Clase de conexión a la base de datos MariaDB usando PDO.
-// Patrón Singleton: una única conexión reutilizable en toda la aplicación.
-// Se integra con config/database.php sin alterar la maquetación de vistas.
+// Patrón Singleton con soporte extendido para interceptar PDO::query en PHP 8.
+
+class ExtendedPDO extends PDO
+{
+    // Se remueve la declaración ?int para que PHP acepte arreglos de parámetros en $mode
+    public function query(string $statement, $mode = null, ...$fetch_mode_args): PDOStatement|false
+    {
+        if (is_array($mode)) {
+            $stmt = $this->prepare($statement);
+            $stmt->execute($mode);
+            return $stmt;
+        }
+
+        if ($mode !== null) {
+            return parent::query($statement, $mode, ...$fetch_mode_args);
+        }
+
+        return parent::query($statement);
+    }
+}
 
 class Database
 {
@@ -15,7 +33,7 @@ class Database
         $dsn = "mysql:host={$config['host']};dbname={$config['dbname']};charset={$config['charset']}";
 
         try {
-            $this->pdo = new PDO(
+            $this->pdo = new ExtendedPDO(
                 $dsn,
                 $config['username'],
                 $config['password'],
@@ -37,12 +55,11 @@ class Database
         return self::$instance;
     }
 
-    public function getConnection(): PDO
+    public function getConnection(): ExtendedPDO
     {
         return $this->pdo;
     }
 
-    /** Consultas preparadas: PDO::prepare() + execute($params). No usar PDO::query($sql, $params). */
     public function query(string $sql, array $params = []): PDOStatement
     {
         $stmt = $this->pdo->prepare($sql);

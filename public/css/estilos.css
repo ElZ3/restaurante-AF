@@ -1,13 +1,13 @@
 :root {
   --verde: #183D34;
   --verde-2: #225247;
-  --dorado: #D8BD82;
-  --dorado-osc: #B99A56;
+  --dorado: #C5A059;
+  --dorado-osc: #A8843E;
   --marfil: #F7F3EA;
   --blanco: #FFFFFF;
   --texto: #2E2E2E;
   --gris: #6B7280;
-  --borde: #E5E1D6;
+  --borde: #E0DCD3;
 
   --st-disponible: #2F855A;
   --st-reservada: #C77D1A;
@@ -39,8 +39,14 @@ h1, h2, h3, h4, .titulo-serif { font-family: 'Playfair Display', Georgia, serif;
 
 /* ---------- Formularios ---------- */
 .form-control, .form-select { border-radius: 8px; border-color: var(--borde); padding: .6rem .8rem; }
+.form-control, .form-select { background-color: #FAF8F5; }
 .form-control:focus, .form-select:focus { border-color: var(--verde); box-shadow: 0 0 0 .2rem rgba(24,61,52,.15); }
 .form-label { font-size: .85rem; font-weight: 500; color: var(--texto); }
+
+/* ---------- Modales CRUD ---------- */
+.modal-content { border: 0; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+.modal-header .modal-title { color: var(--verde); }
+.modal-backdrop.show { opacity: .5; }
 
 /* ---------- Tarjetas ---------- */
 .tarjeta { background: var(--blanco); border: 1px solid var(--borde); border-radius: var(--radio);
@@ -59,6 +65,7 @@ h1, h2, h3, h4, .titulo-serif { font-family: 'Playfair Display', Georgia, serif;
 .tabla-olivo thead th { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; color: var(--gris);
   border-bottom: 1px solid var(--borde); font-weight: 600; background: transparent; }
 .tabla-olivo td { vertical-align: middle; border-color: var(--borde); }
+.table-responsive, .card-body:has(.table) { overflow: visible !important; }
 
 /* ---------- Estados (siempre color + texto) ---------- */
 .estado { display: inline-flex; align-items: center; gap: .35rem; padding: .2rem .65rem; border-radius: 999px;
@@ -232,3 +239,42 @@ h1, h2, h3, h4, .titulo-serif { font-family: 'Playfair Display', Georgia, serif;
 .prod-precio { font-size: 1.35rem; font-weight: 700; color: var(--verde); }
 .prod-precio::after { content: ''; display: block; width: 28px; height: 3px; background: var(--dorado); border-radius: 2px; margin-top: 2px; }
 .prod-pie { display: flex; justify-content: space-between; align-items: center; gap: .5rem; border-top: 1px solid var(--borde); padding: .6rem 1rem; }
+
+/* ---------- Esqueleto de carga (skeleton) ---------- */
+.skeleton-carga { position: relative; overflow: hidden; background: var(--marfil); border-radius: 8px; min-height: 16px; }
+.skeleton-carga::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.95) 50%, rgba(255,255,255,0) 100%); animation: esqueleto 1.2s infinite linear; }
+@keyframes esqueleto { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+.skeleton-line { display: block; height: 12px; border-radius: 6px; background: var(--marfil); margin: .45rem 0; }
+.skeleton-line:first-child { margin-top: 0; }
+.skeleton-fila { display: table-row; }
+.skeleton-fila td { padding: .85rem 0; border-bottom: 1px solid var(--borde); }
+.skeleton-fila td:last-child { border-bottom: 0; }
+.skeleton-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; }
+.skeleton-card { background: var(--blanco); border: 1px solid var(--borde); border-radius: 14px; overflow: hidden; height: 100%; display: flex; flex-direction: column; }
+.skeleton-img { height: 120px; border-bottom: 1px solid var(--borde); background: var(--marfil); }
+.skeleton-card-body { padding: .8rem; }
+.skeleton-tarjeta { background: var(--blanco); border: 1px solid var(--borde); border-radius: var(--radio); box-shadow: var(--sombra); padding: 1.25rem; }
+
+/* ---------- Toasts (aviso) con animación, progreso e interactividad ---------- */
+.toast.aviso { display: flex; align-items: flex-start; gap: .6rem; border: 0; border-radius: 12px; overflow: hidden; box-shadow: 0 12px 32px rgba(0,0,0,.2); animation: toastEntrada .38s cubic-bezier(.21,1.02,.73,1) both; }
+.toast, .toast-body, .toast-header, .alert-success { color: #ffffff !important; }
+.toast .text-muted, .toast p, .toast span { color: #f8f9fa !important; }
+@keyframes toastEntrada { from { opacity: 0; transform: translateX(110%); } to { opacity: 1; transform: translateX(0); } }
+.toast.aviso.saliendo { animation: toastSalida .28s ease both; }
+@keyframes toastSalida { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(110%); } }
+.aviso-icono { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.22); color: #fff; font-size: 1rem; font-weight: 700; flex: 0 0 auto; }
+.aviso-body { padding: .65rem .9rem; flex: 1 1 auto; min-width: 0; }
+.aviso-titulo { font-weight: 700; font-size: .88rem; }
+.aviso-texto { font-size: .82rem; opacity: .92; word-break: break-word; }
+.aviso-cerrar { background: transparent; border: 0; color: #fff; opacity: .75; font-size: 1.2rem; line-height: 1; padding: .2rem .45rem; }
+.aviso-cerrar:hover { opacity: 1; }
+.toast-progreso { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(255,255,255,.28); }
+.toast-progreso span { display: block; height: 100%; background: #fff; transform-origin: left center; animation-name: progresoToast; animation-timing-function: linear; animation-fill-mode: forwards; }
+@keyframes progresoToast { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.aviso-success { background-color: #183D34; }
+.aviso-danger { background-color: #A93226; }
+.aviso-warning { background-color: #B7791F; }
+.aviso-info { background-color: #2B6CB0; }
+
+/* ---------- Spinner en botones ---------- */
+.btn .spinner-border { width: 1rem; height: 1rem; border-width: 2px; }

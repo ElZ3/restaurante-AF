@@ -1,8 +1,7 @@
 <?php
-// Modelo: Orden.php
-// Tabla: ordenes
-// Órdenes/pedidos del restaurante vinculados a mesas y usuarios.
-// Consultas SQL reales vía clase Database con transacciones PDO.
+// Modelo: Orden.php (DEPRECADO)
+// Tabla: pedidos (esquema olivo_real.sql)
+// Este modelo se mantiene por compatibilidad; usar Pedido.php para operaciones nuevas.
 
 class Orden
 {
@@ -13,127 +12,49 @@ class Orden
         $this->db = Database::getInstance();
     }
 
-    private function selectOrdenes(): string
-    {
-        return 'SELECT o.id, o.mesa_id, o.usuario_id, o.estado, o.total,
-                       o.creado_en AS fecha_hora, o.cerrado_en,
-                       u.nombre AS usuario_nombre, m.numero_mesa AS mesa_numero
-                FROM ordenes o
-                JOIN mesas m ON o.mesa_id = m.id
-                LEFT JOIN usuarios u ON o.usuario_id = u.id';
-    }
-
-    private function validarEstado(string $estado): void
-    {
-        if (!in_array($estado, ['Abierta', 'En Preparacion', 'Servida', 'Pagada', 'Cancelada'], true)) {
-            throw new InvalidArgumentException('Estado de orden no válido.');
-        }
-    }
-
     public function obtenerTodos(): array
     {
-        $stmt = $this->db->query($this->selectOrdenes() . ' ORDER BY o.creado_en DESC');
+        $stmt = $this->db->query(
+            "SELECT p.id, p.mesa_id, p.usuario_id, p.reserva_id, p.fecha, p.estado, p.estado_cuenta, p.total,
+                    u.nombre AS usuario_nombre, m.numero_mesa AS mesa_numero FROM pedidos p
+             LEFT JOIN usuarios u ON p.usuario_id = u.id
+             LEFT JOIN mesas m ON p.mesa_id = m.id
+             ORDER BY p.fecha DESC",
+            []
+        );
         return $stmt->fetchAll();
     }
 
     public function obtenerPorId(int $id): ?array
     {
         $stmt = $this->db->query(
-            $this->selectOrdenes() . ' WHERE o.id = ?',
+            'SELECT id, mesa_id, usuario_id, reserva_id, fecha, estado, estado_cuenta, total FROM pedidos WHERE id = ?',
             [$id]
         );
-        $orden = $stmt->fetch();
-        return $orden === false ? null : $orden;
-    }
-
-    /**
-     * Devuelve una orden con sus detalles (items) para renderizado de vista.
-     * fecha_hora es un alias de creado_en.
-     */
-    public function obtenerConDetalles(int $id): ?array
-    {
-        $orden = $this->obtenerPorId($id);
-        if ($orden === null) {
-            return null;
-        }
-
-        $detalleModel = new DetalleOrden($this->db);
-        $orden['items'] = $detalleModel->obtenerPorOrden($id);
-
-        return $orden;
-    }
-
-    public function crear(int $mesaId, int $usuarioId, float $total, string $estado = 'Abierta'): int
-    {
-        $this->validarEstado($estado);
-        $this->db->beginTransaction();
-        try {
-            $this->db->query(
-                'INSERT INTO ordenes (mesa_id, usuario_id, estado, total, creado_en)
-                 VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)',
-                [$mesaId, $usuarioId, $estado, $total]
-            );
-            $ordenId = (int) $this->db->lastInsertId();
-            $this->db->commit();
-            return $ordenId;
-        } catch (PDOException $e) {
-            $this->db->rollBack();
-            throw $e;
-        }
+        $resultado = $stmt->fetch();
+        return $resultado !== false ? $resultado : null;
     }
 
     public function actualizarEstado(int $id, string $estado): bool
     {
-        $this->validarEstado($estado);
-        $this->db->beginTransaction();
-        try {
-            $stmt = $this->db->query(
-                "UPDATE ordenes
-                 SET estado = ?, cerrado_en = CASE
-                     WHEN ? IN ('Pagada', 'Cancelada') THEN CURRENT_TIMESTAMP
-                     ELSE NULL
-                 END
-                 WHERE id = ?",
-                [$estado, $estado, $id]
-            );
-            $this->db->commit();
-            return $stmt->rowCount() >= 0;
-        } catch (PDOException $e) {
-            $this->db->rollBack();
-            throw $e;
-        }
+        $stmt = $this->db->query("UPDATE pedidos SET estado = ? WHERE id = ?", [$estado, $id]);
+        return $stmt->rowCount() > 0;
     }
 
     public function eliminar(int $id): bool
     {
-        $this->db->beginTransaction();
+        $pdo = $this->db->getConnection();
+        $pdo->beginTransaction();
         try {
-            $this->db->query('DELETE FROM detalles_orden WHERE orden_id = ?', [$id]);
-            $stmt = $this->db->query('DELETE FROM ordenes WHERE id = ?', [$id]);
-            $this->db->commit();
-            return $stmt->rowCount() >= 0;
-        } catch (PDOException $e) {
-            $this->db->rollBack();
+            $detalleStmt = $pdo->prepare("DELETE FROM detalle_pedido WHERE pedido_id = ?");
+            $detalleStmt->execute([$id]);
+            $stmt = $pdo->prepare("DELETE FROM pedidos WHERE id = ?");
+            $resultado = $stmt->execute([$id]);
+            $pdo->commit();
+            return (bool) $resultado;
+        } catch (\Exception $e) {
+            $pdo->rollBack();
             throw $e;
         }
-    }
-
-    public function obtenerPorMesa(int $mesaId): array
-    {
-        $stmt = $this->db->query(
-            $this->selectOrdenes() . ' WHERE o.mesa_id = ? ORDER BY o.creado_en DESC',
-            [$mesaId]
-        );
-        return $stmt->fetchAll();
-    }
-
-    public function obtenerPorEstado(string $estado): array
-    {
-        $this->validarEstado($estado);
-        $stmt = $this->db->query(
-            $this->selectOrdenes() . ' WHERE o.estado = ? ORDER BY o.creado_en DESC',
-            [$estado]
-        );
-        return $stmt->fetchAll();
     }
 }
