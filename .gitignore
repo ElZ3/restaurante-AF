@@ -21,11 +21,9 @@ Thumbs.db
 # Configuración y workflows de GitHub
 .github/
 
-# Carpeta de referencia original (NO subir a producción)
+# Carpeta de referencia original
 olivo-real/
 olivo-real/*
-
-# Ocultar todos los archivos Markdown (.md) de la raíz y subcarpetas
 *.md
 
 # Excepción: Permitir únicamente AVANCE1.md
